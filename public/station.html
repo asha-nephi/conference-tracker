@@ -15,21 +15,28 @@
     <a href="/export?format=csv">Export CSV</a>
   </div>
   <h1>Usher Check-In</h1>
-  <p class="subtitle">Zone <span id="zoneLabel" class="badge">…</span> · use this for anyone without a phone, or filling in by hand</p>
+  <p class="subtitle">Zone <span id="zoneLabel" class="badge">…</span></p>
 
-  <div class="card">
+  <button class="btn-primary big-cta" id="notMemberBtn">Not a member</button>
+
+  <div class="or-divider">or, member</div>
+
+  <div class="card member-card" id="memberCard">
     <div class="toggle-group">
-      <button class="toggle-btn active" id="btnIndividual" type="button">Individual</button>
-      <button class="toggle-btn" id="btnFamily" type="button">Family</button>
-      <button class="toggle-btn" id="btnGuest" type="button">Guest</button>
+      <button class="toggle-btn active" id="memberIndividualBtn" type="button">Individual</button>
+      <button class="toggle-btn" id="memberFamilyBtn" type="button">Family / with kids</button>
     </div>
 
-    <div id="individualFields">
-      <label for="indName">Name (optional)</label>
-      <input type="text" id="indName" placeholder="Optional">
+    <div id="wardIndividualSection">
+      <div class="ward-grid-compact" id="wardGridIndividual"></div>
     </div>
 
-    <div id="familyFields" style="display:none">
+    <div id="wardFamilySection" style="display:none">
+      <div class="ward-grid-compact" id="wardGridFamily"></div>
+    </div>
+
+    <div id="familyDetailsSection" style="display:none">
+      <p class="subtitle" style="margin:8px 0" id="familyWardLabel"></p>
       <label for="famName">Adult's name</label>
       <input type="text" id="famName" placeholder="e.g. Sister Adeyemi">
 
@@ -38,36 +45,32 @@
       <label for="famAddress">Address</label>
       <input type="text" id="famAddress" placeholder="Optional if phone given">
 
-      <label>Boys</label>
+      <label>How many are in this group? (including the adult)</label>
       <div class="counter-row">
-        <button class="counter-btn" data-target="boys" data-delta="-1" type="button">-</button>
-        <input type="number" id="boysCount" value="0" min="0">
-        <button class="counter-btn" data-target="boys" data-delta="1" type="button">+</button>
+        <button class="counter-btn" id="partyMinus" type="button">-</button>
+        <input type="number" id="partySize" value="1" min="1">
+        <button class="counter-btn" id="partyPlus" type="button">+</button>
       </div>
 
-      <label>Girls</label>
-      <div class="counter-row">
-        <button class="counter-btn" data-target="girls" data-delta="-1" type="button">-</button>
-        <input type="number" id="girlsCount" value="0" min="0">
-        <button class="counter-btn" data-target="girls" data-delta="1" type="button">+</button>
-      </div>
+      <button class="btn-primary" id="familySubmitBtn">Check In</button>
     </div>
+  </div>
 
-    <div id="guestFields" style="display:none">
-      <p class="subtitle" style="margin:0 0 8px">First-time guest or investigator (non-member, or a member's guest). It's fine if they came on their own.</p>
-      <label for="guestName">Guest's name</label>
-      <input type="text" id="guestName" placeholder="e.g. John Smith">
+  <div class="card" id="guestCard" style="display:none">
+    <p class="subtitle" style="margin:0 0 8px">First-time guest or investigator. It's fine if they came on their own.</p>
+    <label for="guestName">Guest's name</label>
+    <input type="text" id="guestName" placeholder="e.g. John Smith">
 
-      <label for="guestPhone">Phone</label>
-      <input type="text" id="guestPhone" placeholder="Optional if address given">
-      <label for="guestAddress">Address</label>
-      <input type="text" id="guestAddress" placeholder="Optional if phone given">
+    <label for="guestPhone">Phone</label>
+    <input type="text" id="guestPhone" placeholder="Optional if address given">
+    <label for="guestAddress">Address</label>
+    <input type="text" id="guestAddress" placeholder="Optional if phone given">
 
-      <label for="guestInvitedBy">Invited by (optional)</label>
-      <input type="text" id="guestInvitedBy" placeholder="Leave blank if they came on their own">
-    </div>
+    <label for="guestInvitedBy">Invited by (optional)</label>
+    <input type="text" id="guestInvitedBy" placeholder="Leave blank if they came on their own">
 
-    <button class="btn-primary" id="submitBtn">Check In</button>
+    <button class="btn-primary" id="guestSubmitBtn">Check In</button>
+    <button class="btn-secondary" id="backToWelcome">Back</button>
   </div>
 
   <div class="card">
@@ -77,43 +80,115 @@
       <div class="stat"><div class="n" id="statIndividuals">0</div><div class="l">Individuals</div></div>
       <div class="stat"><div class="n" id="statFamilies">0</div><div class="l">Families</div></div>
       <div class="stat"><div class="n" id="statGuests">0</div><div class="l">Guests/Investigators</div></div>
-      <div class="stat"><div class="n" id="statBoys">0</div><div class="l">Boys</div></div>
-      <div class="stat"><div class="n" id="statGirls">0</div><div class="l">Girls</div></div>
     </div>
   </div>
 </div>
 
 <script src="/common.js"></script>
 <script>
-let entryType = 'individual';
-const fieldBlocks = {
-  individual: document.getElementById('individualFields'),
-  family: document.getElementById('familyFields'),
-  guest: document.getElementById('guestFields')
-};
-const toggleBtns = {
-  individual: document.getElementById('btnIndividual'),
-  family: document.getElementById('btnFamily'),
-  guest: document.getElementById('btnGuest')
-};
+let selectedFamilyWard = null;
+let WARDS = [];
 
-function setEntryType(type) {
-  entryType = type;
-  for (const key of Object.keys(fieldBlocks)) {
-    fieldBlocks[key].style.display = key === type ? '' : 'none';
-    toggleBtns[key].classList.toggle('active', key === type);
-  }
-}
-toggleBtns.individual.addEventListener('click', () => setEntryType('individual'));
-toggleBtns.family.addEventListener('click', () => setEntryType('family'));
-toggleBtns.guest.addEventListener('click', () => setEntryType('guest'));
-
-document.querySelectorAll('.counter-btn').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    const input = document.getElementById(btn.dataset.target === 'boys' ? 'boysCount' : 'girlsCount');
-    const next = Math.max(0, parseInt(input.value || '0', 10) + parseInt(btn.dataset.delta, 10));
-    input.value = next;
+function renderWardGrid(el, onPick) {
+  el.innerHTML = '';
+  WARDS.forEach((w) => {
+    const btn = document.createElement('button');
+    btn.className = 'ward-btn-compact';
+    btn.type = 'button';
+    btn.textContent = w;
+    btn.addEventListener('click', () => onPick(w));
+    el.appendChild(btn);
   });
+}
+
+function setMemberMode(mode) {
+  document.getElementById('memberIndividualBtn').classList.toggle('active', mode === 'individual');
+  document.getElementById('memberFamilyBtn').classList.toggle('active', mode === 'family');
+  document.getElementById('wardIndividualSection').style.display = mode === 'individual' ? '' : 'none';
+  document.getElementById('wardFamilySection').style.display = mode === 'family' ? '' : 'none';
+  document.getElementById('familyDetailsSection').style.display = 'none';
+}
+document.getElementById('memberIndividualBtn').addEventListener('click', () => setMemberMode('individual'));
+document.getElementById('memberFamilyBtn').addEventListener('click', () => setMemberMode('family'));
+
+function resetToWelcome() {
+  document.getElementById('notMemberBtn').style.display = '';
+  document.querySelector('.or-divider').style.display = '';
+  document.getElementById('memberCard').style.display = '';
+  document.getElementById('guestCard').style.display = 'none';
+  setMemberMode('individual');
+}
+
+document.getElementById('notMemberBtn').addEventListener('click', () => {
+  document.getElementById('notMemberBtn').style.display = 'none';
+  document.querySelector('.or-divider').style.display = 'none';
+  document.getElementById('memberCard').style.display = 'none';
+  document.getElementById('guestCard').style.display = '';
+});
+document.getElementById('backToWelcome').addEventListener('click', resetToWelcome);
+
+async function submitMemberIndividual(ward) {
+  try {
+    await submitCheckin({ entry_type: 'individual', ward }, 'form');
+    showToast('Checked in');
+    refreshTotals();
+  } catch (e) { showToast(e.message || 'Error - try again'); }
+}
+
+document.getElementById('partyMinus').addEventListener('click', () => {
+  const input = document.getElementById('partySize');
+  input.value = Math.max(1, parseInt(input.value || '1', 10) - 1);
+});
+document.getElementById('partyPlus').addEventListener('click', () => {
+  const input = document.getElementById('partySize');
+  input.value = Math.max(1, parseInt(input.value || '1', 10) + 1);
+});
+
+function resetFamilyForm() {
+  document.getElementById('famName').value = '';
+  document.getElementById('famPhone').value = '';
+  document.getElementById('famAddress').value = '';
+  document.getElementById('partySize').value = 1;
+}
+function resetGuestForm() {
+  document.getElementById('guestName').value = '';
+  document.getElementById('guestPhone').value = '';
+  document.getElementById('guestAddress').value = '';
+  document.getElementById('guestInvitedBy').value = '';
+}
+
+document.getElementById('familySubmitBtn').addEventListener('click', async () => {
+  const adult_name = document.getElementById('famName').value.trim();
+  const phone = document.getElementById('famPhone').value.trim();
+  const address = document.getElementById('famAddress').value.trim();
+  if (!adult_name) return showToast("Enter the adult's name");
+  if (!phone && !address) return showToast('Enter a phone number or address');
+  try {
+    await submitCheckin({
+      entry_type: 'family', adult_name, phone, address, ward: selectedFamilyWard,
+      party_size: document.getElementById('partySize').value
+    }, 'form');
+    showToast('Family checked in');
+    resetFamilyForm();
+    setMemberMode('individual');
+    refreshTotals();
+  } catch (e) { showToast(e.message || 'Error - try again'); }
+});
+
+document.getElementById('guestSubmitBtn').addEventListener('click', async () => {
+  const adult_name = document.getElementById('guestName').value.trim();
+  const phone = document.getElementById('guestPhone').value.trim();
+  const address = document.getElementById('guestAddress').value.trim();
+  const invited_by = document.getElementById('guestInvitedBy').value.trim();
+  if (!adult_name) return showToast("Enter the guest's name");
+  if (!phone && !address) return showToast('Enter a phone number or address');
+  try {
+    await submitCheckin({ entry_type: 'guest', adult_name, phone, address, invited_by }, 'form');
+    showToast('Guest checked in');
+    resetGuestForm();
+    resetToWelcome();
+    refreshTotals();
+  } catch (e) { showToast(e.message || 'Error - try again'); }
 });
 
 async function refreshTotals() {
@@ -123,52 +198,20 @@ async function refreshTotals() {
     document.getElementById('statIndividuals').textContent = t.individuals;
     document.getElementById('statFamilies').textContent = t.families;
     document.getElementById('statGuests').textContent = t.guests;
-    document.getElementById('statBoys').textContent = t.boys;
-    document.getElementById('statGirls').textContent = t.girls;
     document.getElementById('syncStatus').textContent = t.cloud_merged ? '' : '(offline — QR self check-ins not yet included)';
   } catch (e) { /* ignore */ }
 }
 
-document.getElementById('submitBtn').addEventListener('click', async () => {
-  const payload = { entry_type: entryType };
-  if (entryType === 'individual') {
-    payload.adult_name = document.getElementById('indName').value.trim() || null;
-  } else if (entryType === 'family') {
-    payload.adult_name = document.getElementById('famName').value.trim();
-    payload.phone = document.getElementById('famPhone').value.trim();
-    payload.address = document.getElementById('famAddress').value.trim();
-    payload.boys_count = document.getElementById('boysCount').value;
-    payload.girls_count = document.getElementById('girlsCount').value;
-    if (!payload.adult_name) { showToast("Enter the adult's name"); return; }
-    if (!payload.phone && !payload.address) { showToast('Enter a phone number or address'); return; }
-  } else {
-    payload.adult_name = document.getElementById('guestName').value.trim();
-    payload.phone = document.getElementById('guestPhone').value.trim();
-    payload.address = document.getElementById('guestAddress').value.trim();
-    payload.invited_by = document.getElementById('guestInvitedBy').value.trim();
-    if (!payload.adult_name) { showToast("Enter the guest's name"); return; }
-    if (!payload.phone && !payload.address) { showToast('Enter a phone number or address'); return; }
-  }
-  try {
-    await submitCheckin(payload, 'form');
-    showToast(entryType === 'individual' ? 'Checked in' : entryType === 'family' ? 'Family checked in' : 'Guest checked in');
-    document.getElementById('indName').value = '';
-    document.getElementById('famName').value = '';
-    document.getElementById('famPhone').value = '';
-    document.getElementById('famAddress').value = '';
-    document.getElementById('boysCount').value = 0;
-    document.getElementById('girlsCount').value = 0;
-    document.getElementById('guestName').value = '';
-    document.getElementById('guestPhone').value = '';
-    document.getElementById('guestAddress').value = '';
-    document.getElementById('guestInvitedBy').value = '';
-    refreshTotals();
-  } catch (e) {
-    showToast(e.message || 'Error - try again');
-  }
+fetchMeta().then((m) => {
+  document.getElementById('zoneLabel').textContent = m.zone;
+  WARDS = m.wards || [];
+  renderWardGrid(document.getElementById('wardGridIndividual'), (ward) => submitMemberIndividual(ward));
+  renderWardGrid(document.getElementById('wardGridFamily'), (ward) => {
+    selectedFamilyWard = ward;
+    document.getElementById('familyWardLabel').textContent = `${ward} — enter details below`;
+    document.getElementById('familyDetailsSection').style.display = '';
+  });
 });
-
-fetchMeta().then((m) => { document.getElementById('zoneLabel').textContent = m.zone; });
 refreshTotals();
 setInterval(refreshTotals, 4000);
 </script>

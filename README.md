@@ -2,11 +2,20 @@
 
 Counts attendees at the front and back gates using three methods that all feed the same
 running total: a staff-operated form/sheet, a self-serve QR code attendees scan with their
-own phone (works over their own cellular data, not just venue Wi-Fi), and (once confirmed
-safe — see `fingerprint/README.md`) a fingerprint scanner. Families are logged as one adult
-record with a linked boy/girl child headcount. First-time guests and investigators get their
-own check-in option so you know how many came and can follow up with them — whether a member
-invited them or they came on their own.
+own phone (works over their own cellular data, not just venue Wi-Fi), and a fingerprint
+scanner (see `fingerprint/README.md` for how to run it). Everyone first chooses **Member**
+or **Not a member**:
+
+- **Member → Individual**: pick your ward, done in one tap (fast, anonymous — no name asked).
+- **Member → Family**: pick your ward, then one adult enters their name + phone/address and
+  a headcount ("how many of you, including you") — no name/gender breakdown per child, just
+  a total so a two-parent family isn't forced to misrepresent one parent as a kid.
+- **Not a member**: name + phone/address, and optionally who invited them (blank is fine —
+  plenty of investigators come on their own). This is how you find out how many guests and
+  investigators came, with their contact details for follow-up.
+
+The ward list (Lagos Nigeria Ikeja Stake) is defined once in `lib/store.js` (`WARDS`) and
+served to every page via `/api/meta` — edit it there if wards ever change.
 
 No installation beyond Node.js itself on the two "primary" gate laptops — everything else is
 plain files, nothing to `npm install`. Requires [Node.js](https://nodejs.org) (v18+).
@@ -78,21 +87,20 @@ laptop that just opens a browser to the primary's address — no install needed 
 
 ## Pages
 
-- `/station` — usher-operated check-in: Individual, Family (adult name + phone/address +
-  boys/girls count), or Guest/Investigator (name + phone/address + optional "invited by").
+- `/station` — usher-operated check-in, same Member/Not-a-member → ward flow as the QR page.
 - `/checkin` — mobile self-serve page (local-network version; the public GitHub Pages version
   is the same page, deployed from `docs/`).
 - `/display-qr` — full-screen QR code (public URL) + instructions, printable.
-- `/dashboard` — live running total for this gate, the combined cross-gate cloud total, and
-  the PIN-gated guest/investigator list.
+- `/dashboard` — live running total for this gate (including a by-ward breakdown), the
+  combined cross-gate cloud total, and the PIN-gated guest/investigator list.
 - `/export?format=csv` or `?format=json` — download this gate's session data.
 - `/merge.html` — standalone, works by double-click with no server running. Load the JSON
   exports from both gates to see the combined grand total (de-duplicated by ID) — a manual
   backup for the live cloud total, useful if neither gate had internet all session.
 
-For **Individual** and self-serve "just me" check-ins, no name/phone/address is asked for —
-that's intentionally the fast, anonymous lane. Family and Guest/Investigator entries require a
-name and at least one of phone or address, since those are the ones worth following up on.
+Family and Guest/Investigator entries require a name and at least one of phone or address —
+enforced both in the page and on the server, since those are the ones worth following up on.
+Member/Individual stays a fast, anonymous one-tap (ward only, no name needed).
 
 ## Saturday test → Sunday live
 

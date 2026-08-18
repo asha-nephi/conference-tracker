@@ -4,7 +4,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { createStore, todaySession } = require('./lib/store');
+const { createStore, todaySession, WARDS } = require('./lib/store');
 const { syncCheckinToCloud, getPublicWebTotalsForZone } = require('./lib/supabase-sync');
 
 const ZONE = (process.env.ZONE || process.argv[2] || 'front').toLowerCase();
@@ -66,7 +66,7 @@ function readBody(req) {
 }
 
 function toCsv(records) {
-  const headers = ['id', 'zone', 'session', 'method', 'entry_type', 'adult_name', 'boys_count', 'girls_count', 'total_count', 'created_at'];
+  const headers = ['id', 'zone', 'session', 'method', 'entry_type', 'adult_name', 'phone', 'address', 'ward', 'invited_by', 'party_size', 'total_count', 'created_at'];
   const esc = (v) => {
     const s = v === null || v === undefined ? '' : String(v);
     return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
@@ -105,8 +105,6 @@ const server = http.createServer(async (req, res) => {
         totals.individuals += Number(cloudOnly.individuals || 0);
         totals.families += Number(cloudOnly.families || 0);
         totals.guests += Number(cloudOnly.guests || 0);
-        totals.boys += Number(cloudOnly.boys || 0);
-        totals.girls += Number(cloudOnly.girls || 0);
         totals.by_method.qr_self += Number(cloudOnly.qr_self_count || 0);
         totals.cloud_merged = true;
       } else {
@@ -116,7 +114,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (p === '/api/meta' && req.method === 'GET') {
-      return sendJson(res, 200, { zone: ZONE, port: PORT, lan_ips: getLanIPs(), today: todaySession(), sessions: store.listSessions() });
+      return sendJson(res, 200, { zone: ZONE, port: PORT, lan_ips: getLanIPs(), today: todaySession(), sessions: store.listSessions(), wards: WARDS });
     }
 
     if (p === '/api/archive' && req.method === 'POST') {

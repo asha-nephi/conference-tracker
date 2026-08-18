@@ -11,37 +11,45 @@
   <h1>Welcome!</h1>
   <p class="subtitle">Tap below to check yourself in for today's session.</p>
 
-  <div class="card" id="oneTapCard">
-    <button class="btn-primary" id="imHereBtn">I'm here (just me)</button>
-    <button class="btn-secondary" id="familyModeBtn">I'm here with family / kids</button>
-    <button class="btn-secondary" id="guestModeBtn">I'm a first-time guest / investigator</button>
-  </div>
+  <button class="btn-primary big-cta" id="notMemberBtn">I'm not a member</button>
 
-  <div class="card" id="familyCard" style="display:none">
-    <label for="famName">Your name</label>
-    <input type="text" id="famName" placeholder="e.g. Brother Okafor">
+  <div class="or-divider">or, if you're a member</div>
 
-    <label for="famPhone">Phone</label>
-    <input type="text" id="famPhone" placeholder="Optional if address given">
-    <label for="famAddress">Address</label>
-    <input type="text" id="famAddress" placeholder="Optional if phone given">
-
-    <label>Boys with you</label>
-    <div class="counter-row">
-      <button class="counter-btn" data-target="boys" data-delta="-1" type="button">-</button>
-      <input type="number" id="boysCount" value="0" min="0">
-      <button class="counter-btn" data-target="boys" data-delta="1" type="button">+</button>
+  <div class="card member-card" id="memberCard">
+    <div class="toggle-group">
+      <button class="toggle-btn active" id="memberIndividualBtn" type="button">Individual</button>
+      <button class="toggle-btn" id="memberFamilyBtn" type="button">Family / with kids</button>
     </div>
 
-    <label>Girls with you</label>
-    <div class="counter-row">
-      <button class="counter-btn" data-target="girls" data-delta="-1" type="button">-</button>
-      <input type="number" id="girlsCount" value="0" min="0">
-      <button class="counter-btn" data-target="girls" data-delta="1" type="button">+</button>
+    <div id="wardIndividualSection">
+      <div class="ward-grid-compact" id="wardGridIndividual"></div>
     </div>
 
-    <button class="btn-primary" id="familySubmitBtn">Check In</button>
-    <button class="btn-secondary" id="backBtn1">Back</button>
+    <div id="wardFamilySection" style="display:none">
+      <div class="ward-grid-compact" id="wardGridFamily"></div>
+    </div>
+
+    <div id="familyDetailsSection" style="display:none">
+      <p class="subtitle" style="margin:8px 0" id="familyWardLabel"></p>
+      <label for="famName">Your name</label>
+      <input type="text" id="famName" placeholder="e.g. Brother Okafor">
+
+      <label for="famPhone">Phone</label>
+      <input type="text" id="famPhone" placeholder="Optional if address given">
+      <label for="famAddress">Address</label>
+      <input type="text" id="famAddress" placeholder="Optional if phone given">
+
+      <label>How many of you are here? (including you)</label>
+      <div class="counter-row">
+        <button class="counter-btn" id="partyMinus" type="button">-</button>
+        <input type="number" id="partySize" value="1" min="1">
+        <button class="counter-btn" id="partyPlus" type="button">+</button>
+      </div>
+
+      <button class="btn-primary" id="familySubmitBtn">Check In</button>
+    </div>
+
+    <div id="memberDoneMsg" class="inline-done" style="display:none">✓ Checked in. Thank you!</div>
   </div>
 
   <div class="card" id="guestCard" style="display:none">
@@ -58,7 +66,7 @@
     <input type="text" id="guestInvitedBy" placeholder="Leave blank if no one did">
 
     <button class="btn-primary" id="guestSubmitBtn">Check In</button>
-    <button class="btn-secondary" id="backBtn2">Back</button>
+    <button class="btn-secondary" id="backToWelcome">Back</button>
   </div>
 
   <div class="card" id="doneCard" style="display:none">
@@ -69,13 +77,47 @@
 
 <script src="/supabase-config.js"></script>
 <script>
+const WARDS = ['Dopemu Ward', 'Ifako Ward', 'Ikeja Ward', 'Maryland Ward', 'Opebi Ward', 'Oshodi Ward', 'Shogunle Ward'];
 const zone = new URLSearchParams(location.search).get('zone') || 'front';
 const session = new URLSearchParams(location.search).get('session') || null;
+let selectedFamilyWard = null;
 
 function todaySession() {
   const d = new Date();
   const pad = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function renderWardGrid(el, onPick) {
+  el.innerHTML = '';
+  WARDS.forEach((w) => {
+    const btn = document.createElement('button');
+    btn.className = 'ward-btn-compact';
+    btn.type = 'button';
+    btn.textContent = w;
+    btn.addEventListener('click', () => onPick(w));
+    el.appendChild(btn);
+  });
+}
+renderWardGrid(document.getElementById('wardGridIndividual'), (ward) => submitMemberIndividual(ward));
+renderWardGrid(document.getElementById('wardGridFamily'), (ward) => {
+  selectedFamilyWard = ward;
+  document.getElementById('familyWardLabel').textContent = `${ward} — enter your details below`;
+  document.getElementById('familyDetailsSection').style.display = '';
+});
+
+// crypto.randomUUID() only exists in "secure contexts" (HTTPS, or localhost) —
+// the local self-serve flow is reached over plain http://<lan-ip>, which
+// doesn't qualify, so it's undefined there. Fall back to a plain JS UUID v4
+// in that case (fine for de-duplication purposes, doesn't need to be
+// cryptographically random).
+function genId() {
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
 }
 
 // Try this laptop's local server first (works with zero internet, and keeps
@@ -84,16 +126,15 @@ function todaySession() {
 // writing straight to the shared cloud database.
 async function submitCheckin(fields) {
   const record = Object.assign({
-    id: crypto.randomUUID(),
+    id: genId(),
     zone,
     session: session || todaySession(),
     method: 'qr_self',
-    boys_count: 0,
-    girls_count: 0,
+    party_size: 1,
     total_count: 1,
     created_at: new Date().toISOString()
   }, fields);
-  if (record.entry_type === 'family') record.total_count = 1 + (parseInt(record.boys_count, 10) || 0) + (parseInt(record.girls_count, 10) || 0);
+  if (record.entry_type === 'family') record.total_count = Math.max(1, parseInt(record.party_size, 10) || 1);
 
   try {
     const ctrl = new AbortController();
@@ -114,30 +155,51 @@ async function submitCheckin(fields) {
   }
 }
 
-document.getElementById('imHereBtn').addEventListener('click', async () => {
+function setMemberMode(mode) {
+  document.getElementById('memberIndividualBtn').classList.toggle('active', mode === 'individual');
+  document.getElementById('memberFamilyBtn').classList.toggle('active', mode === 'family');
+  document.getElementById('wardIndividualSection').style.display = mode === 'individual' ? '' : 'none';
+  document.getElementById('wardFamilySection').style.display = mode === 'family' ? '' : 'none';
+  document.getElementById('familyDetailsSection').style.display = 'none';
+}
+document.getElementById('memberIndividualBtn').addEventListener('click', () => setMemberMode('individual'));
+document.getElementById('memberFamilyBtn').addEventListener('click', () => setMemberMode('family'));
+
+async function submitMemberIndividual(ward) {
   try {
-    await submitCheckin({ entry_type: 'individual' });
-    showDone();
+    await submitCheckin({ entry_type: 'individual', ward });
+    showMemberDone();
   } catch (e) { showError(e.message); }
-});
-
-document.getElementById('familyModeBtn').addEventListener('click', () => showCard('familyCard'));
-document.getElementById('guestModeBtn').addEventListener('click', () => showCard('guestCard'));
-document.getElementById('backBtn1').addEventListener('click', () => showCard('oneTapCard'));
-document.getElementById('backBtn2').addEventListener('click', () => showCard('oneTapCard'));
-
-function showCard(id) {
-  ['oneTapCard', 'familyCard', 'guestCard', 'doneCard'].forEach((c) => {
-    document.getElementById(c).style.display = c === id ? '' : 'none';
-  });
 }
 
-document.querySelectorAll('.counter-btn').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    const input = document.getElementById(btn.dataset.target === 'boys' ? 'boysCount' : 'girlsCount');
-    const next = Math.max(0, parseInt(input.value || '0', 10) + parseInt(btn.dataset.delta, 10));
-    input.value = next;
-  });
+function showMemberDone() {
+  document.getElementById('wardIndividualSection').style.display = 'none';
+  document.getElementById('wardFamilySection').style.display = 'none';
+  document.getElementById('familyDetailsSection').style.display = 'none';
+  document.querySelector('#memberCard .toggle-group').style.display = 'none';
+  document.getElementById('memberDoneMsg').style.display = '';
+}
+
+document.getElementById('notMemberBtn').addEventListener('click', () => {
+  document.getElementById('notMemberBtn').style.display = 'none';
+  document.querySelector('.or-divider').style.display = 'none';
+  document.getElementById('memberCard').style.display = 'none';
+  document.getElementById('guestCard').style.display = '';
+});
+document.getElementById('backToWelcome').addEventListener('click', () => {
+  document.getElementById('notMemberBtn').style.display = '';
+  document.querySelector('.or-divider').style.display = '';
+  document.getElementById('memberCard').style.display = '';
+  document.getElementById('guestCard').style.display = 'none';
+});
+
+document.getElementById('partyMinus').addEventListener('click', () => {
+  const input = document.getElementById('partySize');
+  input.value = Math.max(1, parseInt(input.value || '1', 10) - 1);
+});
+document.getElementById('partyPlus').addEventListener('click', () => {
+  const input = document.getElementById('partySize');
+  input.value = Math.max(1, parseInt(input.value || '1', 10) + 1);
 });
 
 document.getElementById('familySubmitBtn').addEventListener('click', async () => {
@@ -148,11 +210,10 @@ document.getElementById('familySubmitBtn').addEventListener('click', async () =>
   if (!phone && !address) return showError('Please enter a phone number or address');
   try {
     await submitCheckin({
-      entry_type: 'family', adult_name, phone, address,
-      boys_count: document.getElementById('boysCount').value,
-      girls_count: document.getElementById('girlsCount').value
+      entry_type: 'family', adult_name, phone, address, ward: selectedFamilyWard,
+      party_size: document.getElementById('partySize').value
     });
-    showDone();
+    showMemberDone();
   } catch (e) { showError(e.message); }
 });
 
@@ -165,7 +226,8 @@ document.getElementById('guestSubmitBtn').addEventListener('click', async () => 
   if (!phone && !address) return showError('Please enter a phone number or address');
   try {
     await submitCheckin({ entry_type: 'guest', adult_name, phone, address, invited_by });
-    showDone();
+    document.getElementById('guestCard').style.display = 'none';
+    document.getElementById('doneCard').style.display = '';
   } catch (e) { showError(e.message); }
 });
 
@@ -179,8 +241,6 @@ function showError(msg) {
   }
   el.textContent = msg || 'Something went wrong, please try again';
 }
-
-function showDone() { showCard('doneCard'); }
 </script>
 </body>
 </html>

@@ -54,3 +54,15 @@ th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eee; }
 .nav { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
 .nav a { font-size: 0.85rem; color: #2b6cb0; text-decoration: none; }
 .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #ebf4ff; color: #2b6cb0; font-size: 0.75rem; font-weight: 700; }
+
+.big-cta { padding: 26px; font-size: 1.3rem; margin-top: 0; }
+.or-divider { text-align: center; color: #999; font-size: 0.8rem; margin: 16px 0; text-transform: uppercase; letter-spacing: 0.06em; }
+.member-card { padding: 14px; }
+.member-card .toggle-btn { padding: 10px; font-size: 0.9rem; }
+.ward-grid-compact { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.ward-btn-compact {
+  padding: 11px 6px; font-size: 0.85rem; font-weight: 600; color: #2b6cb0; background: #fff;
+  border: 1.5px solid #2b6cb0; border-radius: 8px; cursor: pointer; text-align: center;
+}
+.ward-btn-compact:active { background: #ebf4ff; }
+.inline-done { text-align: center; color: #1a7f4b; font-weight: 700; padding: 10px 0; }

@@ -29,10 +29,15 @@
       <div class="stat"><div class="n" id="statIndividuals">0</div><div class="l">Individuals</div></div>
       <div class="stat"><div class="n" id="statFamilies">0</div><div class="l">Families</div></div>
       <div class="stat"><div class="n" id="statGuests">0</div><div class="l">Guests/Investigators</div></div>
-      <div class="stat"><div class="n" id="statKids">0</div><div class="l">Kids (with families)</div></div>
-      <div class="stat"><div class="n" id="statBoys">0</div><div class="l">Boys</div></div>
-      <div class="stat"><div class="n" id="statGirls">0</div><div class="l">Girls</div></div>
     </div>
+  </div>
+
+  <div class="card">
+    <h1 style="font-size:1.1rem">By ward</h1>
+    <table>
+      <thead><tr><th>Ward</th><th>People</th></tr></thead>
+      <tbody id="wardBody"><tr><td colspan="2">No ward data yet</td></tr></tbody>
+    </table>
   </div>
 
   <div class="card">
@@ -98,9 +103,10 @@ async function refresh() {
   document.getElementById('statIndividuals').textContent = t.individuals;
   document.getElementById('statFamilies').textContent = t.families;
   document.getElementById('statGuests').textContent = t.guests;
-  document.getElementById('statKids').textContent = t.boys + t.girls;
-  document.getElementById('statBoys').textContent = t.boys;
-  document.getElementById('statGirls').textContent = t.girls;
+  const wardEntries = Object.entries(t.by_ward || {}).sort((a, b) => b[1] - a[1]);
+  document.getElementById('wardBody').innerHTML = wardEntries.length
+    ? wardEntries.map(([ward, count]) => `<tr><td>${escapeHtml(ward)}</td><td>${count}</td></tr>`).join('')
+    : '<tr><td colspan="2">No ward data yet</td></tr>';
   document.getElementById('methodForm').textContent = t.by_method.form;
   document.getElementById('methodQr').textContent = t.by_method.qr_self;
   document.getElementById('methodFingerprint').textContent = t.by_method.fingerprint;

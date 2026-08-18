@@ -50,9 +50,7 @@
       <div class="stat"><div class="n" id="statCheckins">0</div><div class="l">Check-ins</div></div>
       <div class="stat"><div class="n" id="statIndividuals">0</div><div class="l">Individuals</div></div>
       <div class="stat"><div class="n" id="statFamilies">0</div><div class="l">Families</div></div>
-      <div class="stat"><div class="n" id="statKids">0</div><div class="l">Kids</div></div>
-      <div class="stat"><div class="n" id="statBoys">0</div><div class="l">Boys</div></div>
-      <div class="stat"><div class="n" id="statGirls">0</div><div class="l">Girls</div></div>
+      <div class="stat"><div class="n" id="statGuests">0</div><div class="l">Guests/Investigators</div></div>
       <div class="stat"><div class="n" id="statZones">0</div><div class="l">Zones loaded</div></div>
       <div class="stat"><div class="n" id="statDupes">0</div><div class="l">Duplicate IDs skipped</div></div>
     </div>
@@ -61,7 +59,14 @@
 
   <div class="card">
     <table>
-      <thead><tr><th>Zone</th><th>Session</th><th>Method</th><th>Type</th><th>Adult</th><th>Boys</th><th>Girls</th><th>Total</th><th>Time</th></tr></thead>
+      <thead><tr><th>Ward</th><th>People</th></tr></thead>
+      <tbody id="wardBody"><tr><td colspan="2">No ward data yet</td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead><tr><th>Zone</th><th>Session</th><th>Method</th><th>Type</th><th>Name</th><th>Ward</th><th>Party size</th><th>Total</th><th>Time</th></tr></thead>
       <tbody id="recordsBody"></tbody>
     </table>
   </div>
@@ -76,22 +81,27 @@ function recompute() {
   const records = Array.from(byId.values());
   const zones = new Set(records.map(r => r.zone));
   const sessions = new Set(records.map(r => r.session));
-  let totalPeople = 0, individuals = 0, families = 0, boys = 0, girls = 0;
+  let totalPeople = 0, individuals = 0, families = 0, guests = 0;
+  const byWard = {};
   for (const r of records) {
     totalPeople += r.total_count || 0;
-    if (r.entry_type === 'family') families += 1; else individuals += 1;
-    boys += r.boys_count || 0;
-    girls += r.girls_count || 0;
+    if (r.entry_type === 'family') families += 1;
+    else if (r.entry_type === 'guest') guests += 1;
+    else individuals += 1;
+    if (r.ward) byWard[r.ward] = (byWard[r.ward] || 0) + (r.total_count || 0);
   }
   document.getElementById('totalPeople').textContent = totalPeople;
   document.getElementById('statCheckins').textContent = records.length;
   document.getElementById('statIndividuals').textContent = individuals;
   document.getElementById('statFamilies').textContent = families;
-  document.getElementById('statKids').textContent = boys + girls;
-  document.getElementById('statBoys').textContent = boys;
-  document.getElementById('statGirls').textContent = girls;
+  document.getElementById('statGuests').textContent = guests;
   document.getElementById('statZones').textContent = zones.size;
   document.getElementById('statDupes').textContent = dupeCount;
+
+  const wardEntries = Object.entries(byWard).sort((a, b) => b[1] - a[1]);
+  document.getElementById('wardBody').innerHTML = wardEntries.length
+    ? wardEntries.map(([ward, count]) => `<tr><td>${escapeHtml(ward)}</td><td>${count}</td></tr>`).join('')
+    : '<tr><td colspan="2">No ward data yet</td></tr>';
 
   const warn = document.getElementById('sessionWarn');
   warn.textContent = sessions.size > 1
@@ -103,7 +113,7 @@ function recompute() {
   tbody.innerHTML = sorted.map(r => `<tr>
     <td>${escapeHtml(r.zone)}</td><td>${escapeHtml(r.session)}</td><td>${escapeHtml(r.method)}</td>
     <td>${escapeHtml(r.entry_type)}</td><td>${escapeHtml(r.adult_name || '')}</td>
-    <td>${r.boys_count || 0}</td><td>${r.girls_count || 0}</td><td>${r.total_count}</td>
+    <td>${escapeHtml(r.ward || '')}</td><td>${r.party_size || 1}</td><td>${r.total_count}</td>
     <td>${escapeHtml((r.created_at || '').replace('T', ' ').slice(0, 19))}</td>
   </tr>`).join('');
 }
