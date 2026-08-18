@@ -23,7 +23,7 @@
 
   <div class="card">
     <div class="total-big" id="totalPeople">0</div>
-    <div class="total-label">total people this session (this gate, local)</div>
+    <div class="total-label">total people this session, this gate (staff form + QR self check-in) <span id="syncStatus"></span></div>
     <div class="stat-grid">
       <div class="stat"><div class="n" id="statCheckins">0</div><div class="l">Check-ins logged</div></div>
       <div class="stat"><div class="n" id="statIndividuals">0</div><div class="l">Individuals</div></div>
@@ -106,6 +106,7 @@ async function refresh() {
   document.getElementById('methodFingerprint').textContent = t.by_method.fingerprint;
   document.getElementById('exportCsvLink').href = `/export?format=csv&session=${encodeURIComponent(currentSession)}`;
   document.getElementById('exportJsonLink').href = `/export?format=json&session=${encodeURIComponent(currentSession)}`;
+  document.getElementById('syncStatus').textContent = t.cloud_merged ? '' : '(offline — QR self check-ins not yet included)';
 }
 
 async function refreshCloudTotal() {

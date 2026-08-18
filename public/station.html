@@ -72,7 +72,7 @@
 
   <div class="card">
     <div class="total-big" id="totalPeople">0</div>
-    <div class="total-label">people checked in so far (this laptop)</div>
+    <div class="total-label">people checked in so far (this gate, incl. QR self check-in) <span id="syncStatus"></span></div>
     <div class="stat-grid">
       <div class="stat"><div class="n" id="statIndividuals">0</div><div class="l">Individuals</div></div>
       <div class="stat"><div class="n" id="statFamilies">0</div><div class="l">Families</div></div>
@@ -125,6 +125,7 @@ async function refreshTotals() {
     document.getElementById('statGuests').textContent = t.guests;
     document.getElementById('statBoys').textContent = t.boys;
     document.getElementById('statGirls').textContent = t.girls;
+    document.getElementById('syncStatus').textContent = t.cloud_merged ? '' : '(offline — QR self check-ins not yet included)';
   } catch (e) { /* ignore */ }
 }
 

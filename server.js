@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { createStore, todaySession } = require('./lib/store');
-const { syncCheckinToCloud } = require('./lib/supabase-sync');
+const { syncCheckinToCloud, getPublicWebTotalsForZone } = require('./lib/supabase-sync');
 
 const ZONE = (process.env.ZONE || process.argv[2] || 'front').toLowerCase();
 const PORT = parseInt(process.env.PORT || process.argv[3] || '3000', 10);
@@ -97,7 +97,22 @@ const server = http.createServer(async (req, res) => {
 
     if (p === '/api/totals' && req.method === 'GET') {
       const session = url.searchParams.get('session') || todaySession();
-      return sendJson(res, 200, store.getTotals(session));
+      const totals = store.getTotals(session);
+      const cloudOnly = await getPublicWebTotalsForZone(ZONE, session);
+      if (cloudOnly) {
+        totals.total_people += Number(cloudOnly.total_people || 0);
+        totals.total_checkins += Number(cloudOnly.total_checkins || 0);
+        totals.individuals += Number(cloudOnly.individuals || 0);
+        totals.families += Number(cloudOnly.families || 0);
+        totals.guests += Number(cloudOnly.guests || 0);
+        totals.boys += Number(cloudOnly.boys || 0);
+        totals.girls += Number(cloudOnly.girls || 0);
+        totals.by_method.qr_self += Number(cloudOnly.qr_self_count || 0);
+        totals.cloud_merged = true;
+      } else {
+        totals.cloud_merged = false;
+      }
+      return sendJson(res, 200, totals);
     }
 
     if (p === '/api/meta' && req.method === 'GET') {
