@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scan to Check In</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+  body { background: #fff; }
+  .center { text-align: center; padding-top: 30px; }
+  canvas { border: 1px solid #eee; }
+  .url { font-size: 0.9rem; color: #666; margin-top: 12px; word-break: break-all; }
+  .instructions { font-size: 1.1rem; margin-top: 18px; line-height: 1.5; }
+  .fallback { font-size: 0.8rem; color: #999; margin-top: 20px; }
+  @media print { .nav, .no-print { display: none; } }
+</style>
+</head>
+<body>
+<div class="wrap center">
+  <div class="nav no-print" style="justify-content:center">
+    <a href="/station">Station</a>
+    <a href="/dashboard">Dashboard</a>
+  </div>
+  <h1>Scan to Check In</h1>
+  <canvas id="qrCanvas" width="300" height="300"></canvas>
+  <div class="url" id="urlText">Loading…</div>
+  <div class="instructions">
+    Open your phone's camera app, point it at this code, and tap the link that appears.<br>
+    Works on your own data — no need to join any Wi-Fi.
+  </div>
+  <div class="fallback no-print" id="localFallback"></div>
+</div>
+
+<script src="/vendor/qrcode.js"></script>
+<script src="/common.js"></script>
+<script src="/site-config.js"></script>
+<script>
+async function render() {
+  const meta = await fetchMeta();
+  const targetUrl = `${PUBLIC_CHECKIN_BASE}?zone=${encodeURIComponent(meta.zone)}`;
+  document.getElementById('urlText').textContent = targetUrl;
+
+  const ip = meta.lan_ips[0];
+  if (ip) {
+    document.getElementById('localFallback').textContent =
+      `Staff on this laptop's Wi-Fi can also use: http://${ip}:${meta.port}/checkin?zone=${meta.zone}`;
+  }
+
+  const qr = qrcode(0, 'M');
+  qr.addData(targetUrl);
+  qr.make();
+  const n = qr.getModuleCount();
+  const canvas = document.getElementById('qrCanvas');
+  const size = canvas.width;
+  const quiet = 2;
+  const cell = Math.floor(size / (n + quiet * 2));
+  const total = cell * (n + quiet * 2);
+  canvas.width = total;
+  canvas.height = total;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, total, total);
+  ctx.fillStyle = '#000';
+  for (let r = 0; r < n; r += 1) {
+    for (let c = 0; c < n; c += 1) {
+      if (qr.isDark(r, c)) ctx.fillRect((c + quiet) * cell, (r + quiet) * cell, cell, cell);
+    }
+  }
+}
+render();
+</script>
+</body>
+</html>

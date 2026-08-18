@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="wrap wide">
+  <div class="nav">
+    <a href="/station">Station</a>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/display-qr">Show QR</a>
+    <a href="/export?format=csv" id="exportCsvLink">Export CSV</a>
+    <a href="/export?format=json" id="exportJsonLink">Export JSON</a>
+  </div>
+  <h1>Live Totals <span id="zoneLabel" class="badge">…</span></h1>
+  <p class="subtitle">
+    Session:
+    <select id="sessionSelect"></select>
+  </p>
+
+  <div class="card">
+    <div class="total-big" id="totalPeople">0</div>
+    <div class="total-label">total people this session (this gate, local)</div>
+    <div class="stat-grid">
+      <div class="stat"><div class="n" id="statCheckins">0</div><div class="l">Check-ins logged</div></div>
+      <div class="stat"><div class="n" id="statIndividuals">0</div><div class="l">Individuals</div></div>
+      <div class="stat"><div class="n" id="statFamilies">0</div><div class="l">Families</div></div>
+      <div class="stat"><div class="n" id="statGuests">0</div><div class="l">Guests/Investigators</div></div>
+      <div class="stat"><div class="n" id="statKids">0</div><div class="l">Kids (with families)</div></div>
+      <div class="stat"><div class="n" id="statBoys">0</div><div class="l">Boys</div></div>
+      <div class="stat"><div class="n" id="statGirls">0</div><div class="l">Girls</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h1 style="font-size:1.1rem">By method</h1>
+    <div class="stat-grid">
+      <div class="stat"><div class="n" id="methodForm">0</div><div class="l">Form / sheet (staff)</div></div>
+      <div class="stat"><div class="n" id="methodQr">0</div><div class="l">QR self check-in</div></div>
+      <div class="stat"><div class="n" id="methodFingerprint">0</div><div class="l">Fingerprint</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h1 style="font-size:1.1rem">Combined — all gates (live, cloud)</h1>
+    <p class="subtitle" style="margin:4px 0">
+      Pulled from the shared cloud database. Reflects whatever has synced so far — may undercount if a gate
+      has no internet right now, but never double-counts.
+    </p>
+    <div class="total-big" id="cloudTotal">–</div>
+    <div class="total-label" id="cloudStatus">not checked yet</div>
+    <button class="btn-secondary" id="refreshCloudBtn">Refresh combined total</button>
+  </div>
+
+  <div class="card">
+    <h1 style="font-size:1.1rem">Guest / Investigator list</h1>
+    <p class="subtitle" style="margin:4px 0">Contains names, phone/address, and who invited them. PIN-protected — ask your stake leader for it.</p>
+    <div id="pinPrompt">
+      <input type="text" id="pinInput" placeholder="Dashboard PIN" style="max-width:160px;display:inline-block">
+      <button class="btn-secondary" id="unlockBtn" style="display:inline-block;width:auto;margin-top:0;margin-left:8px;padding:12px 18px">Unlock</button>
+    </div>
+    <div id="guestListWrap" style="display:none;margin-top:12px">
+      <table>
+        <thead><tr><th>Zone</th><th>Name</th><th>Phone</th><th>Address</th><th>Invited by</th><th>Time</th></tr></thead>
+        <tbody id="guestListBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <button class="btn-secondary" id="archiveBtn">Start fresh session (archive current data, keeps the export)</button>
+  </div>
+</div>
+
+<script src="/common.js"></script>
+<script src="/supabase-config.js"></script>
+<script>
+let currentSession = null;
+
+async function loadSessions() {
+  const meta = await fetchMeta();
+  document.getElementById('zoneLabel').textContent = meta.zone;
+  const sel = document.getElementById('sessionSelect');
+  const sessions = meta.sessions.includes(meta.today) ? meta.sessions : [...meta.sessions, meta.today];
+  sel.innerHTML = sessions.map((s) => `<option value="${s}">${s}${s === meta.today ? ' (today)' : ''}</option>`).join('');
+  currentSession = meta.today;
+  sel.value = currentSession;
+  sel.addEventListener('change', () => { currentSession = sel.value; refresh(); });
+}
+
+async function refresh() {
+  const t = await fetchTotals(currentSession);
+  document.getElementById('totalPeople').textContent = t.total_people;
+  document.getElementById('statCheckins').textContent = t.total_checkins;
+  document.getElementById('statIndividuals').textContent = t.individuals;
+  document.getElementById('statFamilies').textContent = t.families;
+  document.getElementById('statGuests').textContent = t.guests;
+  document.getElementById('statKids').textContent = t.boys + t.girls;
+  document.getElementById('statBoys').textContent = t.boys;
+  document.getElementById('statGirls').textContent = t.girls;
+  document.getElementById('methodForm').textContent = t.by_method.form;
+  document.getElementById('methodQr').textContent = t.by_method.qr_self;
+  document.getElementById('methodFingerprint').textContent = t.by_method.fingerprint;
+  document.getElementById('exportCsvLink').href = `/export?format=csv&session=${encodeURIComponent(currentSession)}`;
+  document.getElementById('exportJsonLink').href = `/export?format=json&session=${encodeURIComponent(currentSession)}`;
+}
+
+async function refreshCloudTotal() {
+  const statusEl = document.getElementById('cloudStatus');
+  statusEl.textContent = 'checking…';
+  try {
+    const rows = await supabaseGetTotals(null, currentSession);
+    const total = rows.reduce((sum, r) => sum + Number(r.total_people || 0), 0);
+    document.getElementById('cloudTotal').textContent = total;
+    const zoneBreakdown = rows.map((r) => `${r.zone}: ${r.total_people}`).join(', ') || 'no data yet';
+    statusEl.textContent = `as of ${new Date().toLocaleTimeString()} — ${zoneBreakdown}`;
+  } catch (e) {
+    document.getElementById('cloudTotal').textContent = '–';
+    statusEl.textContent = 'could not reach the cloud database (no internet right now?)';
+  }
+}
+document.getElementById('refreshCloudBtn').addEventListener('click', refreshCloudTotal);
+
+document.getElementById('unlockBtn').addEventListener('click', async () => {
+  const pin = document.getElementById('pinInput').value.trim();
+  if (!pin) return;
+  try {
+    const rows = await supabaseGetFullCheckins(pin, null, currentSession);
+    const guests = rows.filter((r) => r.entry_type === 'guest');
+    document.getElementById('guestListBody').innerHTML = guests.map((r) => `<tr>
+      <td>${escapeHtml(r.zone)}</td><td>${escapeHtml(r.adult_name || '')}</td>
+      <td>${escapeHtml(r.phone || '')}</td><td>${escapeHtml(r.address || '')}</td>
+      <td>${escapeHtml(r.invited_by || '(came on their own)')}</td>
+      <td>${escapeHtml((r.created_at || '').replace('T', ' ').slice(0, 19))}</td>
+    </tr>`).join('') || '<tr><td colspan="6">No guests/investigators logged yet for this session.</td></tr>';
+    document.getElementById('pinPrompt').style.display = 'none';
+    document.getElementById('guestListWrap').style.display = '';
+  } catch (e) {
+    showToast(e.message || 'Wrong PIN or no connection');
+  }
+});
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+document.getElementById('archiveBtn').addEventListener('click', async () => {
+  if (!confirm(`Archive all data for session ${currentSession}? Export it first if you haven't. This clears the live totals but keeps the data on disk.`)) return;
+  await fetch('/api/archive', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session: currentSession }) });
+  await loadSessions();
+  await refresh();
+});
+
+loadSessions().then(refresh);
+setInterval(refresh, 3000);
+</script>
+</body>
+</html>

@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Conference Check-In</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="wrap">
+  <h1>Welcome!</h1>
+  <p class="subtitle">Tap below to check yourself in for today's session.</p>
+
+  <div class="card" id="oneTapCard">
+    <button class="btn-primary" id="imHereBtn">I'm here (just me)</button>
+    <button class="btn-secondary" id="familyModeBtn">I'm here with family / kids</button>
+    <button class="btn-secondary" id="guestModeBtn">I'm a first-time guest / investigator</button>
+  </div>
+
+  <div class="card" id="familyCard" style="display:none">
+    <label for="famName">Your name</label>
+    <input type="text" id="famName" placeholder="e.g. Brother Okafor">
+
+    <label for="famPhone">Phone</label>
+    <input type="text" id="famPhone" placeholder="Optional if address given">
+    <label for="famAddress">Address</label>
+    <input type="text" id="famAddress" placeholder="Optional if phone given">
+
+    <label>Boys with you</label>
+    <div class="counter-row">
+      <button class="counter-btn" data-target="boys" data-delta="-1" type="button">-</button>
+      <input type="number" id="boysCount" value="0" min="0">
+      <button class="counter-btn" data-target="boys" data-delta="1" type="button">+</button>
+    </div>
+
+    <label>Girls with you</label>
+    <div class="counter-row">
+      <button class="counter-btn" data-target="girls" data-delta="-1" type="button">-</button>
+      <input type="number" id="girlsCount" value="0" min="0">
+      <button class="counter-btn" data-target="girls" data-delta="1" type="button">+</button>
+    </div>
+
+    <button class="btn-primary" id="familySubmitBtn">Check In</button>
+    <button class="btn-secondary" id="backBtn1">Back</button>
+  </div>
+
+  <div class="card" id="guestCard" style="display:none">
+    <p class="subtitle" style="margin:0 0 8px">So glad you're here! It's totally fine if you came on your own.</p>
+    <label for="guestName">Your name</label>
+    <input type="text" id="guestName" placeholder="e.g. John Smith">
+
+    <label for="guestPhone">Phone</label>
+    <input type="text" id="guestPhone" placeholder="Optional if address given">
+    <label for="guestAddress">Address</label>
+    <input type="text" id="guestAddress" placeholder="Optional if phone given">
+
+    <label for="guestInvitedBy">Who invited you? (optional)</label>
+    <input type="text" id="guestInvitedBy" placeholder="Leave blank if no one did">
+
+    <button class="btn-primary" id="guestSubmitBtn">Check In</button>
+    <button class="btn-secondary" id="backBtn2">Back</button>
+  </div>
+
+  <div class="card" id="doneCard" style="display:none">
+    <div class="total-big">✓</div>
+    <div class="total-label">You're checked in. Thank you!</div>
+  </div>
+</div>
+
+<script src="/supabase-config.js"></script>
+<script>
+const zone = new URLSearchParams(location.search).get('zone') || 'front';
+const session = new URLSearchParams(location.search).get('session') || null;
+
+function todaySession() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+// Try this laptop's local server first (works with zero internet, and keeps
+// a local backup copy). If that's unreachable — e.g. this page was opened
+// from the public GitHub Pages link over cellular data — fall back to
+// writing straight to the shared cloud database.
+async function submitCheckin(fields) {
+  const record = Object.assign({
+    id: crypto.randomUUID(),
+    zone,
+    session: session || todaySession(),
+    method: 'qr_self',
+    boys_count: 0,
+    girls_count: 0,
+    total_count: 1,
+    created_at: new Date().toISOString()
+  }, fields);
+  if (record.entry_type === 'family') record.total_count = 1 + (parseInt(record.boys_count, 10) || 0) + (parseInt(record.girls_count, 10) || 0);
+
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 2500);
+    const res = await fetch('/api/checkin', {
+      method: 'POST',
+      signal: ctrl.signal,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(record)
+    });
+    clearTimeout(t);
+    if (res.ok) return;
+    if (res.status === 400) { const body = await res.json().catch(() => null); throw new Error((body && body.error) || 'Please check your entry'); }
+    throw new Error('local endpoint unavailable');
+  } catch (e) {
+    if (e.message && (e.message.includes('phone') || e.message.includes('name') || e.message.includes('address'))) throw e;
+    await supabaseInsertCheckin(Object.assign({}, record, { source: 'public_web' }));
+  }
+}
+
+document.getElementById('imHereBtn').addEventListener('click', async () => {
+  try {
+    await submitCheckin({ entry_type: 'individual' });
+    showDone();
+  } catch (e) { showError(e.message); }
+});
+
+document.getElementById('familyModeBtn').addEventListener('click', () => showCard('familyCard'));
+document.getElementById('guestModeBtn').addEventListener('click', () => showCard('guestCard'));
+document.getElementById('backBtn1').addEventListener('click', () => showCard('oneTapCard'));
+document.getElementById('backBtn2').addEventListener('click', () => showCard('oneTapCard'));
+
+function showCard(id) {
+  ['oneTapCard', 'familyCard', 'guestCard', 'doneCard'].forEach((c) => {
+    document.getElementById(c).style.display = c === id ? '' : 'none';
+  });
+}
+
+document.querySelectorAll('.counter-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const input = document.getElementById(btn.dataset.target === 'boys' ? 'boysCount' : 'girlsCount');
+    const next = Math.max(0, parseInt(input.value || '0', 10) + parseInt(btn.dataset.delta, 10));
+    input.value = next;
+  });
+});
+
+document.getElementById('familySubmitBtn').addEventListener('click', async () => {
+  const adult_name = document.getElementById('famName').value.trim();
+  const phone = document.getElementById('famPhone').value.trim();
+  const address = document.getElementById('famAddress').value.trim();
+  if (!adult_name) return showError('Please enter your name');
+  if (!phone && !address) return showError('Please enter a phone number or address');
+  try {
+    await submitCheckin({
+      entry_type: 'family', adult_name, phone, address,
+      boys_count: document.getElementById('boysCount').value,
+      girls_count: document.getElementById('girlsCount').value
+    });
+    showDone();
+  } catch (e) { showError(e.message); }
+});
+
+document.getElementById('guestSubmitBtn').addEventListener('click', async () => {
+  const adult_name = document.getElementById('guestName').value.trim();
+  const phone = document.getElementById('guestPhone').value.trim();
+  const address = document.getElementById('guestAddress').value.trim();
+  const invited_by = document.getElementById('guestInvitedBy').value.trim();
+  if (!adult_name) return showError('Please enter your name');
+  if (!phone && !address) return showError('Please enter a phone number or address');
+  try {
+    await submitCheckin({ entry_type: 'guest', adult_name, phone, address, invited_by });
+    showDone();
+  } catch (e) { showError(e.message); }
+});
+
+function showError(msg) {
+  let el = document.getElementById('errMsg');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'errMsg';
+    el.style.cssText = 'color:#c0392b;font-weight:600;margin-top:10px;text-align:center';
+    document.querySelector('.wrap').appendChild(el);
+  }
+  el.textContent = msg || 'Something went wrong, please try again';
+}
+
+function showDone() { showCard('doneCard'); }
+</script>
+</body>
+</html>

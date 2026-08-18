@@ -1,0 +1,4 @@
+# Attendee data must never leave this laptop / be pushed to GitHub.
+data/*.jsonl
+
+node_modules/

@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Merge Gate Exports</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: #f4f5f7; color: #1a1a1a; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 20px 16px 60px; }
+  h1 { font-size: 1.4rem; }
+  .subtitle { color: #666; }
+  .card { background: #fff; border-radius: 12px; padding: 18px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .drop {
+    border: 2px dashed #bbb; border-radius: 10px; padding: 30px; text-align: center; color: #666; cursor: pointer;
+  }
+  .drop.drag { border-color: #2b6cb0; background: #ebf4ff; }
+  .file-list { margin-top: 12px; font-size: 0.9rem; }
+  .file-list div { padding: 4px 0; }
+  .total-big { font-size: 2.6rem; font-weight: 800; color: #2b6cb0; }
+  .total-label { color: #666; font-size: 0.85rem; }
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 10px; }
+  .stat { background: #f9fafb; border-radius: 10px; padding: 12px; }
+  .stat .n { font-size: 1.4rem; font-weight: 700; }
+  .stat .l { font-size: 0.75rem; color: #666; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  th, td { text-align: left; padding: 5px 7px; border-bottom: 1px solid #eee; }
+  .warn { color: #b7791f; font-size: 0.85rem; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Merge Gate Exports</h1>
+  <p class="subtitle">
+    Standalone offline tool — works by double-clicking this file, no server needed.
+    Load the JSON exports from the front-gate and back-gate laptops (from their <code>/dashboard</code> &rarr; Export JSON) to see the combined grand total.
+    Records are de-duplicated by ID, so it's safe to load the same file twice or re-load an updated export.
+  </p>
+
+  <div class="card">
+    <div class="drop" id="drop">Click to choose export JSON file(s), or drag them here</div>
+    <input type="file" id="fileInput" accept="application/json" multiple style="display:none">
+    <div class="file-list" id="fileList"></div>
+  </div>
+
+  <div class="card">
+    <div class="total-big" id="totalPeople">0</div>
+    <div class="total-label">combined total people</div>
+    <div class="stat-grid">
+      <div class="stat"><div class="n" id="statCheckins">0</div><div class="l">Check-ins</div></div>
+      <div class="stat"><div class="n" id="statIndividuals">0</div><div class="l">Individuals</div></div>
+      <div class="stat"><div class="n" id="statFamilies">0</div><div class="l">Families</div></div>
+      <div class="stat"><div class="n" id="statKids">0</div><div class="l">Kids</div></div>
+      <div class="stat"><div class="n" id="statBoys">0</div><div class="l">Boys</div></div>
+      <div class="stat"><div class="n" id="statGirls">0</div><div class="l">Girls</div></div>
+      <div class="stat"><div class="n" id="statZones">0</div><div class="l">Zones loaded</div></div>
+      <div class="stat"><div class="n" id="statDupes">0</div><div class="l">Duplicate IDs skipped</div></div>
+    </div>
+    <div class="warn" id="sessionWarn"></div>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead><tr><th>Zone</th><th>Session</th><th>Method</th><th>Type</th><th>Adult</th><th>Boys</th><th>Girls</th><th>Total</th><th>Time</th></tr></thead>
+      <tbody id="recordsBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const byId = new Map();
+let dupeCount = 0;
+const loadedFiles = [];
+
+function recompute() {
+  const records = Array.from(byId.values());
+  const zones = new Set(records.map(r => r.zone));
+  const sessions = new Set(records.map(r => r.session));
+  let totalPeople = 0, individuals = 0, families = 0, boys = 0, girls = 0;
+  for (const r of records) {
+    totalPeople += r.total_count || 0;
+    if (r.entry_type === 'family') families += 1; else individuals += 1;
+    boys += r.boys_count || 0;
+    girls += r.girls_count || 0;
+  }
+  document.getElementById('totalPeople').textContent = totalPeople;
+  document.getElementById('statCheckins').textContent = records.length;
+  document.getElementById('statIndividuals').textContent = individuals;
+  document.getElementById('statFamilies').textContent = families;
+  document.getElementById('statKids').textContent = boys + girls;
+  document.getElementById('statBoys').textContent = boys;
+  document.getElementById('statGirls').textContent = girls;
+  document.getElementById('statZones').textContent = zones.size;
+  document.getElementById('statDupes').textContent = dupeCount;
+
+  const warn = document.getElementById('sessionWarn');
+  warn.textContent = sessions.size > 1
+    ? `Warning: loaded files span multiple sessions (${Array.from(sessions).join(', ')}) — totals mix sessions.`
+    : '';
+
+  const tbody = document.getElementById('recordsBody');
+  const sorted = records.slice().sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
+  tbody.innerHTML = sorted.map(r => `<tr>
+    <td>${escapeHtml(r.zone)}</td><td>${escapeHtml(r.session)}</td><td>${escapeHtml(r.method)}</td>
+    <td>${escapeHtml(r.entry_type)}</td><td>${escapeHtml(r.adult_name || '')}</td>
+    <td>${r.boys_count || 0}</td><td>${r.girls_count || 0}</td><td>${r.total_count}</td>
+    <td>${escapeHtml((r.created_at || '').replace('T', ' ').slice(0, 19))}</td>
+  </tr>`).join('');
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      const records = Array.isArray(data) ? data : (data.records || []);
+      for (const r of records) {
+        if (!r.id) continue;
+        if (byId.has(r.id)) { dupeCount += 1; continue; }
+        byId.set(r.id, r);
+      }
+      loadedFiles.push(`${file.name} (${records.length} records)`);
+      document.getElementById('fileList').innerHTML = loadedFiles.map(f => `<div>&#10003; ${escapeHtml(f)}</div>`).join('');
+      recompute();
+    } catch (e) {
+      alert(`Could not parse ${file.name}: ${e.message}`);
+    }
+  };
+  reader.readAsText(file);
+}
+
+const drop = document.getElementById('drop');
+const fileInput = document.getElementById('fileInput');
+drop.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => { Array.from(fileInput.files).forEach(loadFile); });
+drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('drag'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('drag'));
+drop.addEventListener('drop', (e) => {
+  e.preventDefault();
+  drop.classList.remove('drag');
+  Array.from(e.dataTransfer.files).forEach(loadFile);
+});
+</script>
+</body>
+</html>

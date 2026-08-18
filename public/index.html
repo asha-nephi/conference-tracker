@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Conference Tracker</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="wrap">
+  <h1>Conference Tracker</h1>
+  <p class="subtitle">Zone <span id="zoneLabel" class="badge">…</span></p>
+  <div class="card">
+    <a href="/station"><button class="btn-primary" type="button">Open Usher Station</button></a>
+    <a href="/dashboard"><button class="btn-secondary" type="button">Open Dashboard</button></a>
+    <a href="/display-qr"><button class="btn-secondary" type="button">Show Self-Check-In QR</button></a>
+    <a href="/merge.html"><button class="btn-secondary" type="button">Merge Tool (offline)</button></a>
+  </div>
+</div>
+<script src="/common.js"></script>
+<script>fetchMeta().then((m) => { document.getElementById('zoneLabel').textContent = m.zone; });</script>
+</body>
+</html>
