@@ -22,37 +22,33 @@
   <div class="or-divider">or, member</div>
 
   <div class="card member-card" id="memberCard">
-    <div class="toggle-group">
-      <button class="toggle-btn active" id="memberIndividualBtn" type="button">Individual</button>
-      <button class="toggle-btn" id="memberFamilyBtn" type="button">Family / with kids</button>
+    <div id="wardPickSection">
+      <p class="subtitle" style="margin:0 0 8px">Which ward?</p>
+      <div class="ward-grid-compact" id="wardGrid"></div>
     </div>
 
-    <div id="wardIndividualSection">
-      <div class="ward-grid-compact" id="wardGridIndividual"></div>
-    </div>
-
-    <div id="wardFamilySection" style="display:none">
-      <div class="ward-grid-compact" id="wardGridFamily"></div>
-    </div>
-
-    <div id="familyDetailsSection" style="display:none">
-      <p class="subtitle" style="margin:8px 0" id="familyWardLabel"></p>
-      <label for="famName">Adult's name</label>
-      <input type="text" id="famName" placeholder="e.g. Sister Adeyemi">
-
-      <label for="famPhone">Phone</label>
-      <input type="text" id="famPhone" placeholder="Optional if address given">
-      <label for="famAddress">Address</label>
-      <input type="text" id="famAddress" placeholder="Optional if phone given">
-
-      <label>How many are in this group? (including the adult)</label>
-      <div class="counter-row">
-        <button class="counter-btn" id="partyMinus" type="button">-</button>
-        <input type="number" id="partySize" value="1" min="1">
-        <button class="counter-btn" id="partyPlus" type="button">+</button>
+    <div id="memberTypeSection" style="display:none">
+      <p class="subtitle" style="margin:0 0 10px" id="selectedWardLabel"></p>
+      <div class="toggle-group">
+        <button class="toggle-btn" id="memberIndividualBtn" type="button">Individual</button>
+        <button class="toggle-btn" id="memberFamilyBtn" type="button">Family / with kids</button>
       </div>
 
-      <button class="btn-primary" id="familySubmitBtn">Check In</button>
+      <div id="familyDetailsSection" style="display:none">
+        <label for="famName">Name (one household member is fine)</label>
+        <input type="text" id="famName" placeholder="e.g. Sister Adeyemi">
+
+        <label>How many are in this group? (including the adult)</label>
+        <div class="counter-row">
+          <button class="counter-btn" id="partyMinus" type="button">-</button>
+          <input type="number" id="partySize" value="1" min="1">
+          <button class="counter-btn" id="partyPlus" type="button">+</button>
+        </div>
+
+        <button class="btn-primary" id="familySubmitBtn">Check In</button>
+      </div>
+
+      <button class="btn-secondary" id="changeWardBtn">Change ward</button>
     </div>
   </div>
 
@@ -86,7 +82,7 @@
 
 <script src="/common.js"></script>
 <script>
-let selectedFamilyWard = null;
+let selectedWard = null;
 let WARDS = [];
 
 function renderWardGrid(el, onPick) {
@@ -104,19 +100,17 @@ function renderWardGrid(el, onPick) {
 function setMemberMode(mode) {
   document.getElementById('memberIndividualBtn').classList.toggle('active', mode === 'individual');
   document.getElementById('memberFamilyBtn').classList.toggle('active', mode === 'family');
-  document.getElementById('wardIndividualSection').style.display = mode === 'individual' ? '' : 'none';
-  document.getElementById('wardFamilySection').style.display = mode === 'family' ? '' : 'none';
-  document.getElementById('familyDetailsSection').style.display = 'none';
+  document.getElementById('familyDetailsSection').style.display = mode === 'family' ? '' : 'none';
 }
-document.getElementById('memberIndividualBtn').addEventListener('click', () => setMemberMode('individual'));
-document.getElementById('memberFamilyBtn').addEventListener('click', () => setMemberMode('family'));
 
 function resetToWelcome() {
   document.getElementById('notMemberBtn').style.display = '';
   document.querySelector('.or-divider').style.display = '';
   document.getElementById('memberCard').style.display = '';
   document.getElementById('guestCard').style.display = 'none';
-  setMemberMode('individual');
+  document.getElementById('wardPickSection').style.display = '';
+  document.getElementById('memberTypeSection').style.display = 'none';
+  setMemberMode(null);
 }
 
 document.getElementById('notMemberBtn').addEventListener('click', () => {
@@ -126,11 +120,22 @@ document.getElementById('notMemberBtn').addEventListener('click', () => {
   document.getElementById('guestCard').style.display = '';
 });
 document.getElementById('backToWelcome').addEventListener('click', resetToWelcome);
+document.getElementById('changeWardBtn').addEventListener('click', () => {
+  document.getElementById('wardPickSection').style.display = '';
+  document.getElementById('memberTypeSection').style.display = 'none';
+});
 
-async function submitMemberIndividual(ward) {
+document.getElementById('memberIndividualBtn').addEventListener('click', () => {
+  setMemberMode('individual');
+  submitMemberIndividual();
+});
+document.getElementById('memberFamilyBtn').addEventListener('click', () => setMemberMode('family'));
+
+async function submitMemberIndividual() {
   try {
-    await submitCheckin({ entry_type: 'individual', ward }, 'form');
+    await submitCheckin({ entry_type: 'individual', ward: selectedWard }, 'form');
     showToast('Checked in');
+    resetToWelcome();
     refreshTotals();
   } catch (e) { showToast(e.message || 'Error - try again'); }
 }
@@ -146,8 +151,6 @@ document.getElementById('partyPlus').addEventListener('click', () => {
 
 function resetFamilyForm() {
   document.getElementById('famName').value = '';
-  document.getElementById('famPhone').value = '';
-  document.getElementById('famAddress').value = '';
   document.getElementById('partySize').value = 1;
 }
 function resetGuestForm() {
@@ -159,18 +162,15 @@ function resetGuestForm() {
 
 document.getElementById('familySubmitBtn').addEventListener('click', async () => {
   const adult_name = document.getElementById('famName').value.trim();
-  const phone = document.getElementById('famPhone').value.trim();
-  const address = document.getElementById('famAddress').value.trim();
-  if (!adult_name) return showToast("Enter the adult's name");
-  if (!phone && !address) return showToast('Enter a phone number or address');
+  if (!adult_name) return showToast('Enter a name');
   try {
     await submitCheckin({
-      entry_type: 'family', adult_name, phone, address, ward: selectedFamilyWard,
+      entry_type: 'family', adult_name, ward: selectedWard,
       party_size: document.getElementById('partySize').value
     }, 'form');
     showToast('Family checked in');
     resetFamilyForm();
-    setMemberMode('individual');
+    resetToWelcome();
     refreshTotals();
   } catch (e) { showToast(e.message || 'Error - try again'); }
 });
@@ -205,11 +205,12 @@ async function refreshTotals() {
 fetchMeta().then((m) => {
   document.getElementById('zoneLabel').textContent = m.zone;
   WARDS = m.wards || [];
-  renderWardGrid(document.getElementById('wardGridIndividual'), (ward) => submitMemberIndividual(ward));
-  renderWardGrid(document.getElementById('wardGridFamily'), (ward) => {
-    selectedFamilyWard = ward;
-    document.getElementById('familyWardLabel').textContent = `${ward} — enter details below`;
-    document.getElementById('familyDetailsSection').style.display = '';
+  renderWardGrid(document.getElementById('wardGrid'), (ward) => {
+    selectedWard = ward;
+    document.getElementById('selectedWardLabel').textContent = ward;
+    document.getElementById('wardPickSection').style.display = 'none';
+    document.getElementById('memberTypeSection').style.display = '';
+    setMemberMode(null);
   });
 });
 refreshTotals();

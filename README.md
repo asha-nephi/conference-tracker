@@ -3,16 +3,25 @@
 Counts attendees at the front and back gates using three methods that all feed the same
 running total: a staff-operated form/sheet, a self-serve QR code attendees scan with their
 own phone (works over their own cellular data, not just venue Wi-Fi), and a fingerprint
-scanner (see `fingerprint/README.md` for how to run it). Everyone first chooses **Member**
-or **Not a member**:
+scanner (see `fingerprint/README.md` for how to run it). "Not a member" is the prominent
+button up top, since capturing guest/investigator details is the priority; members use the
+smaller section below it:
 
-- **Member → Individual**: pick your ward, done in one tap (fast, anonymous — no name asked).
-- **Member → Family**: pick your ward, then one adult enters their name + phone/address and
-  a headcount ("how many of you, including you") — no name/gender breakdown per child, just
-  a total so a two-parent family isn't forced to misrepresent one parent as a kid.
+- **Member**: pick a ward first, then choose Individual or Family.
+  - **Individual**: done in one tap (fast, anonymous — no name asked).
+  - **Family**: one household member enters just their name and a headcount ("how many of you,
+    including you") — no phone/address (members are already in the church's records) and no
+    per-child gender breakdown, just a total so a two-parent family isn't forced to
+    misrepresent one parent as a kid.
 - **Not a member**: name + phone/address, and optionally who invited them (blank is fine —
-  plenty of investigators come on their own). This is how you find out how many guests and
-  investigators came, with their contact details for follow-up.
+  plenty of investigators come on their own). Phone/address is required here specifically
+  because this is the one place we don't already have their contact info.
+
+Every check-in — member or guest — ends on the same "You're checked in, thank you!" screen.
+The self-serve page also remembers (via that browser's local storage) that this device
+already checked in for the day, so refreshing and tapping again doesn't inflate the count;
+it deliberately does *not* block by IP, since many attendees will share the venue Wi-Fi or a
+family data plan and a shared IP doesn't mean the same person.
 
 The ward list (Lagos Nigeria Ikeja Stake) is defined once in `lib/store.js` (`WARDS`) and
 served to every page via `/api/meta` — edit it there if wards ever change.
@@ -98,9 +107,10 @@ laptop that just opens a browser to the primary's address — no install needed 
   exports from both gates to see the combined grand total (de-duplicated by ID) — a manual
   backup for the live cloud total, useful if neither gate had internet all session.
 
-Family and Guest/Investigator entries require a name and at least one of phone or address —
-enforced both in the page and on the server, since those are the ones worth following up on.
-Member/Individual stays a fast, anonymous one-tap (ward only, no name needed).
+Guest/Investigator entries require a name and at least one of phone or address, enforced both
+in the page and on the server — that's the one flow where contact info is actually new
+information. Member/Family only requires a name; Member/Individual stays a fast, anonymous
+one-tap (ward only).
 
 ## Saturday test → Sunday live
 
@@ -112,4 +122,15 @@ clean slate for Sunday (this archives the old file, it never deletes anything).
 
 ## Fingerprint scanner
 
-Not wired in yet — see `fingerprint/README.md` for why, and what's needed before it can be.
+Confirmed working against the real scanner (see `fingerprint/README.md` for the investigation
+that ruled out an earlier concern about the hardware). To run it on a gate laptop, alongside
+that gate's `start-server.bat`:
+
+```bash
+python fingerprint/bridge.py COM5 http://localhost:3000/api/checkin
+```
+
+Replace `COM5` with whatever port Device Manager / `python -c "import serial.tools.list_ports as p; [print(x.device, x.description) for x in p.comports()]"` shows for that laptop's scanner. It
+refuses to run if the boot message doesn't look like the confirmed scanner, logs every scan and
+whether it was recorded, and records one anonymous "individual" check-in (method=fingerprint)
+per match — it doesn't attempt to identify who scanned, just that a match happened.

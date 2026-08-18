@@ -11,67 +11,63 @@
   <h1>Welcome!</h1>
   <p class="subtitle">Tap below to check yourself in for today's session.</p>
 
-  <button class="btn-primary big-cta" id="notMemberBtn">I'm not a member</button>
+  <div id="mainFlow">
+    <button class="btn-primary big-cta" id="notMemberBtn">I'm not a member</button>
 
-  <div class="or-divider">or, if you're a member</div>
+    <div class="or-divider">or, if you're a member</div>
 
-  <div class="card member-card" id="memberCard">
-    <div class="toggle-group">
-      <button class="toggle-btn active" id="memberIndividualBtn" type="button">Individual</button>
-      <button class="toggle-btn" id="memberFamilyBtn" type="button">Family / with kids</button>
-    </div>
-
-    <div id="wardIndividualSection">
-      <div class="ward-grid-compact" id="wardGridIndividual"></div>
-    </div>
-
-    <div id="wardFamilySection" style="display:none">
-      <div class="ward-grid-compact" id="wardGridFamily"></div>
-    </div>
-
-    <div id="familyDetailsSection" style="display:none">
-      <p class="subtitle" style="margin:8px 0" id="familyWardLabel"></p>
-      <label for="famName">Your name</label>
-      <input type="text" id="famName" placeholder="e.g. Brother Okafor">
-
-      <label for="famPhone">Phone</label>
-      <input type="text" id="famPhone" placeholder="Optional if address given">
-      <label for="famAddress">Address</label>
-      <input type="text" id="famAddress" placeholder="Optional if phone given">
-
-      <label>How many of you are here? (including you)</label>
-      <div class="counter-row">
-        <button class="counter-btn" id="partyMinus" type="button">-</button>
-        <input type="number" id="partySize" value="1" min="1">
-        <button class="counter-btn" id="partyPlus" type="button">+</button>
+    <div class="card member-card" id="memberCard">
+      <div id="wardPickSection">
+        <p class="subtitle" style="margin:0 0 8px">Which ward are you from?</p>
+        <div class="ward-grid-compact" id="wardGrid"></div>
       </div>
 
-      <button class="btn-primary" id="familySubmitBtn">Check In</button>
+      <div id="memberTypeSection" style="display:none">
+        <p class="subtitle" style="margin:0 0 10px" id="selectedWardLabel"></p>
+        <div class="toggle-group">
+          <button class="toggle-btn" id="memberIndividualBtn" type="button">Individual</button>
+          <button class="toggle-btn" id="memberFamilyBtn" type="button">Family / with kids</button>
+        </div>
+
+        <div id="familyDetailsSection" style="display:none">
+          <label for="famName">Name (one household member is fine)</label>
+          <input type="text" id="famName" placeholder="e.g. Brother Okafor">
+
+          <label>How many of you are here? (including you)</label>
+          <div class="counter-row">
+            <button class="counter-btn" id="partyMinus" type="button">-</button>
+            <input type="number" id="partySize" value="1" min="1">
+            <button class="counter-btn" id="partyPlus" type="button">+</button>
+          </div>
+
+          <button class="btn-primary" id="familySubmitBtn">Check In</button>
+        </div>
+
+        <button class="btn-secondary" id="changeWardBtn">Change ward</button>
+      </div>
     </div>
 
-    <div id="memberDoneMsg" class="inline-done" style="display:none">✓ Checked in. Thank you!</div>
-  </div>
+    <div class="card" id="guestCard" style="display:none">
+      <p class="subtitle" style="margin:0 0 8px">So glad you're here! It's totally fine if you came on your own.</p>
+      <label for="guestName">Your name</label>
+      <input type="text" id="guestName" placeholder="e.g. John Smith">
 
-  <div class="card" id="guestCard" style="display:none">
-    <p class="subtitle" style="margin:0 0 8px">So glad you're here! It's totally fine if you came on your own.</p>
-    <label for="guestName">Your name</label>
-    <input type="text" id="guestName" placeholder="e.g. John Smith">
+      <label for="guestPhone">Phone</label>
+      <input type="text" id="guestPhone" placeholder="Optional if address given">
+      <label for="guestAddress">Address</label>
+      <input type="text" id="guestAddress" placeholder="Optional if phone given">
 
-    <label for="guestPhone">Phone</label>
-    <input type="text" id="guestPhone" placeholder="Optional if address given">
-    <label for="guestAddress">Address</label>
-    <input type="text" id="guestAddress" placeholder="Optional if phone given">
+      <label for="guestInvitedBy">Who invited you? (optional)</label>
+      <input type="text" id="guestInvitedBy" placeholder="Leave blank if no one did">
 
-    <label for="guestInvitedBy">Who invited you? (optional)</label>
-    <input type="text" id="guestInvitedBy" placeholder="Leave blank if no one did">
-
-    <button class="btn-primary" id="guestSubmitBtn">Check In</button>
-    <button class="btn-secondary" id="backToWelcome">Back</button>
+      <button class="btn-primary" id="guestSubmitBtn">Check In</button>
+      <button class="btn-secondary" id="backToWelcome">Back</button>
+    </div>
   </div>
 
   <div class="card" id="doneCard" style="display:none">
     <div class="total-big">✓</div>
-    <div class="total-label">You're checked in. Thank you!</div>
+    <div class="total-label" id="doneMessage">You're checked in. Thank you!</div>
   </div>
 </div>
 
@@ -80,12 +76,26 @@
 const WARDS = ['Dopemu Ward', 'Ifako Ward', 'Ikeja Ward', 'Maryland Ward', 'Opebi Ward', 'Oshodi Ward', 'Shogunle Ward'];
 const zone = new URLSearchParams(location.search).get('zone') || 'front';
 const session = new URLSearchParams(location.search).get('session') || null;
-let selectedFamilyWard = null;
+let selectedWard = null;
 
 function todaySession() {
   const d = new Date();
   const pad = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+const effectiveSession = session || todaySession();
+const lockKey = `conferenceCheckedIn_${effectiveSession}`;
+
+// Block this same device/browser from checking in twice in one session
+// (e.g. refreshing and tapping again). Easy to clear by clearing browser
+// data, but that's fine — this is a courtesy guard against accidental
+// double-taps, not a security boundary. Only applies to this self-serve
+// page; the usher-operated station is deliberately excluded since one
+// laptop there checks in many different people all day.
+if (localStorage.getItem(lockKey)) {
+  document.getElementById('mainFlow').style.display = 'none';
+  document.getElementById('doneMessage').textContent = "You've already checked in for today's session. Thank you!";
+  document.getElementById('doneCard').style.display = '';
 }
 
 function renderWardGrid(el, onPick) {
@@ -99,11 +109,16 @@ function renderWardGrid(el, onPick) {
     el.appendChild(btn);
   });
 }
-renderWardGrid(document.getElementById('wardGridIndividual'), (ward) => submitMemberIndividual(ward));
-renderWardGrid(document.getElementById('wardGridFamily'), (ward) => {
-  selectedFamilyWard = ward;
-  document.getElementById('familyWardLabel').textContent = `${ward} — enter your details below`;
-  document.getElementById('familyDetailsSection').style.display = '';
+renderWardGrid(document.getElementById('wardGrid'), (ward) => {
+  selectedWard = ward;
+  document.getElementById('selectedWardLabel').textContent = ward;
+  document.getElementById('wardPickSection').style.display = 'none';
+  document.getElementById('memberTypeSection').style.display = '';
+  setMemberMode(null);
+});
+document.getElementById('changeWardBtn').addEventListener('click', () => {
+  document.getElementById('wardPickSection').style.display = '';
+  document.getElementById('memberTypeSection').style.display = 'none';
 });
 
 // crypto.randomUUID() only exists in "secure contexts" (HTTPS, or localhost) —
@@ -128,7 +143,7 @@ async function submitCheckin(fields) {
   const record = Object.assign({
     id: genId(),
     zone,
-    session: session || todaySession(),
+    session: effectiveSession,
     method: 'qr_self',
     party_size: 1,
     total_count: 1,
@@ -158,26 +173,26 @@ async function submitCheckin(fields) {
 function setMemberMode(mode) {
   document.getElementById('memberIndividualBtn').classList.toggle('active', mode === 'individual');
   document.getElementById('memberFamilyBtn').classList.toggle('active', mode === 'family');
-  document.getElementById('wardIndividualSection').style.display = mode === 'individual' ? '' : 'none';
-  document.getElementById('wardFamilySection').style.display = mode === 'family' ? '' : 'none';
-  document.getElementById('familyDetailsSection').style.display = 'none';
+  document.getElementById('familyDetailsSection').style.display = mode === 'family' ? '' : 'none';
 }
-document.getElementById('memberIndividualBtn').addEventListener('click', () => setMemberMode('individual'));
+document.getElementById('memberIndividualBtn').addEventListener('click', () => {
+  setMemberMode('individual');
+  submitMemberIndividual();
+});
 document.getElementById('memberFamilyBtn').addEventListener('click', () => setMemberMode('family'));
 
-async function submitMemberIndividual(ward) {
+async function submitMemberIndividual() {
   try {
-    await submitCheckin({ entry_type: 'individual', ward });
-    showMemberDone();
+    await submitCheckin({ entry_type: 'individual', ward: selectedWard });
+    showDone();
   } catch (e) { showError(e.message); }
 }
 
-function showMemberDone() {
-  document.getElementById('wardIndividualSection').style.display = 'none';
-  document.getElementById('wardFamilySection').style.display = 'none';
-  document.getElementById('familyDetailsSection').style.display = 'none';
-  document.querySelector('#memberCard .toggle-group').style.display = 'none';
-  document.getElementById('memberDoneMsg').style.display = '';
+function showDone() {
+  localStorage.setItem(lockKey, '1');
+  document.getElementById('mainFlow').style.display = 'none';
+  document.getElementById('doneMessage').textContent = "You're checked in. Thank you!";
+  document.getElementById('doneCard').style.display = '';
 }
 
 document.getElementById('notMemberBtn').addEventListener('click', () => {
@@ -204,16 +219,13 @@ document.getElementById('partyPlus').addEventListener('click', () => {
 
 document.getElementById('familySubmitBtn').addEventListener('click', async () => {
   const adult_name = document.getElementById('famName').value.trim();
-  const phone = document.getElementById('famPhone').value.trim();
-  const address = document.getElementById('famAddress').value.trim();
-  if (!adult_name) return showError('Please enter your name');
-  if (!phone && !address) return showError('Please enter a phone number or address');
+  if (!adult_name) return showError('Please enter a name');
   try {
     await submitCheckin({
-      entry_type: 'family', adult_name, phone, address, ward: selectedFamilyWard,
+      entry_type: 'family', adult_name, ward: selectedWard,
       party_size: document.getElementById('partySize').value
     });
-    showMemberDone();
+    showDone();
   } catch (e) { showError(e.message); }
 });
 
@@ -226,8 +238,7 @@ document.getElementById('guestSubmitBtn').addEventListener('click', async () => 
   if (!phone && !address) return showError('Please enter a phone number or address');
   try {
     await submitCheckin({ entry_type: 'guest', adult_name, phone, address, invited_by });
-    document.getElementById('guestCard').style.display = 'none';
-    document.getElementById('doneCard').style.display = '';
+    showDone();
   } catch (e) { showError(e.message); }
 });
 
