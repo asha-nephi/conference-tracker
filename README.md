@@ -106,6 +106,11 @@ laptop that just opens a browser to the primary's address — no install needed 
 - `/merge.html` — standalone, works by double-click with no server running. Load the JSON
   exports from both gates to see the combined grand total (de-duplicated by ID) — a manual
   backup for the live cloud total, useful if neither gate had internet all session.
+- `/display-count.html` (also on GitHub Pages) — a big-screen "live count" display: large
+  animated number, combined across both gates, polling the cloud database every 3 seconds.
+  Talks directly to Supabase, so the laptop showing it doesn't need to run this project's
+  server at all — just a browser pointed at the URL. Add `?session=YYYY-MM-DD` to pin it to
+  a specific session; defaults to today.
 
 Guest/Investigator entries require a name and at least one of phone or address, enforced both
 in the page and on the server — that's the one flow where contact info is actually new

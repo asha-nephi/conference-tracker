@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live Count</title>
+<style>
+  :root { --accent: #2b6cb0; }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; background: #0b1220; color: #fff;
+    font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .screen { text-align: center; }
+  .label { font-size: clamp(1.2rem, 3vw, 2.2rem); color: #93a5c4; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 0.5rem; }
+  .count { font-size: clamp(6rem, 24vw, 20rem); font-weight: 800; line-height: 1; color: #fff; font-variant-numeric: tabular-nums; }
+  .count.bump { color: #6ea8ff; }
+  .subline { margin-top: 1.5rem; font-size: clamp(1rem, 2vw, 1.6rem); color: #6b7d9e; }
+  .status { position: fixed; bottom: 18px; right: 24px; font-size: 0.9rem; color: #445068; }
+  .status.stale { color: #d97706; }
+</style>
+</head>
+<body>
+<div class="screen">
+  <div class="label" id="sessionLabel">Loading…</div>
+  <div class="count" id="countEl">0</div>
+  <div class="subline" id="zoneBreakdown"></div>
+</div>
+<div class="status" id="statusEl"></div>
+
+<script src="supabase-config.js"></script>
+<script>
+function todaySession() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+const session = new URLSearchParams(location.search).get('session') || todaySession();
+document.getElementById('sessionLabel').textContent = `People at today's session — ${session}`;
+
+let shown = 0;
+let animTimer = null;
+const countEl = document.getElementById('countEl');
+
+function animateTo(target) {
+  if (animTimer) clearInterval(animTimer);
+  const start = shown;
+  const diff = target - start;
+  if (diff === 0) return;
+  const duration = 700;
+  const startTime = Date.now();
+  countEl.classList.add('bump');
+  // setInterval, not requestAnimationFrame — rAF is throttled/suspended in
+  // background or unfocused tabs, and this display is meant to keep
+  // counting even if it briefly loses focus (e.g. a screensaver check).
+  const tickMs = 40;
+  animTimer = setInterval(() => {
+    const p = Math.min(1, (Date.now() - startTime) / duration);
+    const eased = 1 - Math.pow(1 - p, 3);
+    const val = Math.round(start + diff * eased);
+    countEl.textContent = val.toLocaleString();
+    if (p >= 1) {
+      clearInterval(animTimer);
+      animTimer = null;
+      shown = target;
+      countEl.textContent = target.toLocaleString();
+      setTimeout(() => countEl.classList.remove('bump'), 300);
+    }
+  }, tickMs);
+}
+
+async function poll() {
+  const statusEl = document.getElementById('statusEl');
+  try {
+    const rows = await supabaseGetTotals(null, session);
+    const total = rows.reduce((sum, r) => sum + Number(r.total_people || 0), 0);
+    const breakdown = rows.map((r) => `${r.zone}: ${r.total_people}`).join('   ·   ');
+    document.getElementById('zoneBreakdown').textContent = breakdown;
+    animateTo(total);
+    statusEl.textContent = `updated ${new Date().toLocaleTimeString()}`;
+    statusEl.classList.remove('stale');
+  } catch (e) {
+    statusEl.textContent = 'connection lost — retrying…';
+    statusEl.classList.add('stale');
+  }
+}
+
+poll();
+setInterval(poll, 3000);
+</script>
+</body>
+</html>
