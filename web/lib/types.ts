@@ -8,6 +8,7 @@ export interface EventRow {
   slug: string;
   created_at: string;
   is_archived: boolean;
+  is_main_conference: boolean;
 }
 
 export interface StationRow {

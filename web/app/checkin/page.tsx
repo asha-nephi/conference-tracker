@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useParam } from '@/lib/hooks';
-import { getEvent, insertCheckin, listStations, listWards } from '@/lib/data';
+import { getEventContext, insertCheckin } from '@/lib/data';
 import type { EventRow, StationRow, WardRow } from '@/lib/types';
 import { Card, Label, PageWrap, PrimaryButton, SecondaryButton, TextInput, ToggleButton } from '@/components/ui';
 
@@ -39,13 +39,12 @@ function CheckinInner() {
         setStage('no-event');
         return;
       }
-      const ev = await getEvent(eventParam);
+      const { event: ev, stations: st, wards: wd } = await getEventContext(eventParam);
       if (!ev) {
         setStage('no-event');
         return;
       }
       setEvent(ev);
-      const [st, wd] = await Promise.all([listStations(ev.id), listWards(ev.id)]);
       setStations(st);
       setWards(wd);
 
@@ -155,12 +154,16 @@ function CheckinInner() {
 
       {!showGuest && (
         <>
-          <PrimaryButton className="py-6 text-lg" onClick={() => setShowGuest(true)}>
-            I&apos;m not a member
-          </PrimaryButton>
-          <div className="text-center text-xs text-slate-400 uppercase tracking-wide my-4">
-            or, if you&apos;re a member
-          </div>
+          {event?.is_main_conference && (
+            <>
+              <PrimaryButton className="py-6 text-lg" onClick={() => setShowGuest(true)}>
+                I&apos;m not a member
+              </PrimaryButton>
+              <div className="text-center text-xs text-slate-400 uppercase tracking-wide my-4">
+                or, if you&apos;re a member
+              </div>
+            </>
+          )}
 
           <Card>
             {!selectedWard ? (

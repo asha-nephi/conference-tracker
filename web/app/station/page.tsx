@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useParam } from '@/lib/hooks';
-import { getEvent, getEventTotals, insertCheckin, listStations, listWards } from '@/lib/data';
+import { getEventContext, getEventTotals, insertCheckin } from '@/lib/data';
 import type { EventRow, EventTotalsRow, StationRow, WardRow } from '@/lib/types';
 import { Card, Label, PageWrap, PrimaryButton, SecondaryButton, StatTile, TextInput, ToggleButton, TopNav } from '@/components/ui';
 
@@ -40,10 +40,9 @@ function StationInner() {
   useEffect(() => {
     (async () => {
       if (!eventParam) return setStage('no-event');
-      const ev = await getEvent(eventParam);
+      const { event: ev, stations: st, wards: wd } = await getEventContext(eventParam);
       if (!ev) return setStage('no-event');
       setEvent(ev);
-      const [st, wd] = await Promise.all([listStations(ev.id), listWards(ev.id)]);
       setStations(st);
       setWards(wd);
 
@@ -167,7 +166,9 @@ function StationInner() {
         <div className="flex gap-2 mb-3">
           <ToggleButton active={entryType === 'individual'} onClick={() => setEntryType('individual')}>Individual</ToggleButton>
           <ToggleButton active={entryType === 'family'} onClick={() => setEntryType('family')}>Family</ToggleButton>
-          <ToggleButton active={entryType === 'guest'} onClick={() => setEntryType('guest')}>Guest</ToggleButton>
+          {event?.is_main_conference && (
+            <ToggleButton active={entryType === 'guest'} onClick={() => setEntryType('guest')}>Guest</ToggleButton>
+          )}
         </div>
 
         {(entryType === 'individual' || entryType === 'family') && (

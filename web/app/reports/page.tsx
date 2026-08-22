@@ -265,50 +265,54 @@ function ReportsInner() {
 
       <Card className="mt-4 print-card">
         <h2 className="font-bold text-sm mb-1">Guest / investigator follow-up sheet</h2>
-        <p className="text-xs text-slate-400 mb-3 no-print">
+        <p className="text-xs text-slate-400 mb-4 no-print">
           Contains names, phone/address, and who invited them. PIN-protected.
         </p>
         {!guests ? (
-          <div className="flex gap-2 no-print">
+          <div className="no-print max-w-xs mx-auto py-2">
             <TextInput
               type="password"
+              inputMode="numeric"
               value={pin}
               onChange={(e) => setPin(e.target.value)}
-              placeholder="Dashboard PIN"
-              className="max-w-[160px]"
+              onKeyDown={(e) => e.key === 'Enter' && unlockGuests()}
+              placeholder="Enter PIN"
+              className="text-center text-lg tracking-widest"
             />
-            <SecondaryButton className="w-auto px-4 flex-shrink-0" onClick={unlockGuests} disabled={pinBusy}>
-              Unlock
-            </SecondaryButton>
+            <PrimaryButton className="mt-3" onClick={unlockGuests} disabled={pinBusy}>
+              {pinBusy ? 'Checking…' : 'Unlock'}
+            </PrimaryButton>
           </div>
         ) : (
-          <table className="w-full text-sm mt-2">
-            <thead>
-              <tr className="text-left text-slate-400 text-xs border-b">
-                <th className="py-1.5 pr-2">Name</th>
-                <th className="py-1.5 pr-2">Phone</th>
-                <th className="py-1.5 pr-2">Address</th>
-                <th className="py-1.5 pr-2">Invited by</th>
-                <th className="py-1.5 pr-2">Station</th>
-                <th className="py-1.5">Time</th>
-              </tr>
-            </thead>
-            <tbody>
-              {guests.map((g) => (
-                <tr key={g.id} className="border-b border-slate-100">
-                  <td className="py-1.5 pr-2 font-medium">{g.adult_name}</td>
-                  <td className="py-1.5 pr-2">{g.phone}</td>
-                  <td className="py-1.5 pr-2">{g.address}</td>
-                  <td className="py-1.5 pr-2">{g.invited_by || '(came on their own)'}</td>
-                  <td className="py-1.5 pr-2">{g.station_name}</td>
-                  <td className="py-1.5">{new Date(g.created_at).toLocaleTimeString()}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm mt-2 min-w-[600px]">
+              <thead>
+                <tr className="text-left text-slate-400 text-xs border-b">
+                  <th className="py-1.5 pr-2">Name</th>
+                  <th className="py-1.5 pr-2">Phone</th>
+                  <th className="py-1.5 pr-2">Address</th>
+                  <th className="py-1.5 pr-2">Invited by</th>
+                  <th className="py-1.5 pr-2">Station</th>
+                  <th className="py-1.5">Time</th>
                 </tr>
-              ))}
-              {guests.length === 0 && (
-                <tr><td colSpan={6} className="py-3 text-slate-400">No guests/investigators logged yet.</td></tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {guests.map((g) => (
+                  <tr key={g.id} className="border-b border-slate-100">
+                    <td className="py-1.5 pr-2 font-medium">{g.adult_name}</td>
+                    <td className="py-1.5 pr-2">{g.phone}</td>
+                    <td className="py-1.5 pr-2">{g.address}</td>
+                    <td className="py-1.5 pr-2">{g.invited_by || '(came on their own)'}</td>
+                    <td className="py-1.5 pr-2">{g.station_name}</td>
+                    <td className="py-1.5">{new Date(g.created_at).toLocaleTimeString()}</td>
+                  </tr>
+                ))}
+                {guests.length === 0 && (
+                  <tr><td colSpan={6} className="py-3 text-slate-400">No guests/investigators logged yet.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         )}
         {pinError && <p className="text-red-600 text-sm mt-2 no-print">{pinError}</p>}
       </Card>
