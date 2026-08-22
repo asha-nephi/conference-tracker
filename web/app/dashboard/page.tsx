@@ -114,8 +114,8 @@ function DashboardInner() {
       </div>
 
       <p className="text-center text-xs text-slate-400 mt-6">
-        Updates live over websockets — no need to refresh. Full reports (charts, PDF, guest list) are on{' '}
-        <a href={`/reports?event=${event?.id}`} className="text-blue-700 underline">the Reports page</a>.
+        Updates automatically. Full report:{' '}
+        <a href={`/reports?event=${event?.id}`} className="text-blue-700 underline">Reports</a>
       </p>
     </PageWrap>
   );

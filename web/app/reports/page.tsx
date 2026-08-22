@@ -142,7 +142,7 @@ function ReportsInner() {
       </div>
 
       <div className="flex items-center justify-between mb-1">
-        <h1 className="text-xl font-bold">{event?.title} — Report</h1>
+        <h1 className="text-xl font-bold">{event?.title} Report</h1>
         <SecondaryButton className="w-auto px-4 no-print" onClick={() => window.print()}>
           Print / Save as PDF
         </SecondaryButton>
@@ -228,9 +228,9 @@ function ReportsInner() {
           value={compareId}
           onChange={(e) => setCompareId(e.target.value)}
         >
-          <option value="">— pick a session to compare —</option>
+          <option value="">Pick a session to compare</option>
           {events.filter((e) => e.id !== event?.id).map((e) => (
-            <option key={e.id} value={e.id}>{e.title} — {e.event_date}</option>
+            <option key={e.id} value={e.id}>{e.title} ({e.event_date})</option>
           ))}
         </select>
       </Card>

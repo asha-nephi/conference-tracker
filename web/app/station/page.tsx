@@ -121,7 +121,7 @@ function StationInner() {
       resetForm();
       refreshTotals(event, station);
     } catch (e) {
-      setToast(e instanceof Error ? e.message : 'Error — try again');
+      setToast(e instanceof Error ? e.message : 'Error, try again');
     } finally {
       setBusy(false);
       setTimeout(() => setToast(null), 1800);
@@ -140,7 +140,7 @@ function StationInner() {
   if (stage === 'pick-station') {
     return (
       <PageWrap>
-        <h1 className="text-xl font-bold mb-3">{event?.title} — pick a station</h1>
+        <h1 className="text-xl font-bold mb-3">{event?.title}: pick a station</h1>
         <div className="grid gap-2">
           {stations.map((s) => (
             <SecondaryButton key={s.id} onClick={() => { setStation(s); setStage('main'); refreshTotals(event!, s); }}>

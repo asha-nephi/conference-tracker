@@ -45,7 +45,7 @@ function AdminGate({ onUnlock }: { onUnlock: (pin: string) => void }) {
       sessionStorage.setItem(PIN_SESSION_KEY, pin.trim());
       onUnlock(pin.trim());
     } catch {
-      setError('Could not verify PIN — check your connection');
+      setError('Could not verify PIN. Check your connection.');
     } finally {
       setBusy(false);
     }
@@ -138,7 +138,7 @@ function AdminPanel({ pin, onLock }: { pin: string; onLock: () => void }) {
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Something went wrong';
       if (msg === 'Wrong PIN') {
-        setError('Your admin session expired or the PIN changed — please unlock again.');
+        setError('Your admin session expired. Please unlock again.');
         onLock();
       } else {
         setError(msg);
@@ -147,11 +147,19 @@ function AdminPanel({ pin, onLock }: { pin: string; onLock: () => void }) {
     }
   }
 
+  async function addStation() {
+    if (!selected || !newStation.trim()) return;
+    const st = await runOrReportPinError(() => adminCreateStation(pin, selected.id, newStation.trim()));
+    if (!st) return;
+    setNewStation('');
+    selectEvent(selected);
+  }
+
   return (
     <PageWrap wide>
       <TopNav current="/admin" />
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold">Admin — Events, Stations &amp; Wards</h1>
+        <h1 className="text-xl font-bold">Admin</h1>
         <SecondaryButton className="w-auto px-4" onClick={onLock}>Lock</SecondaryButton>
       </div>
       {error && (
@@ -255,20 +263,16 @@ function AdminPanel({ pin, onLock }: { pin: string; onLock: () => void }) {
 
               <Card>
                 <h2 className="font-bold text-sm mb-3">Stations</h2>
-                <div className="flex flex-col sm:flex-row gap-2 mb-4">
-                  <TextInput value={newStation} onChange={(e) => setNewStation(e.target.value)} placeholder="e.g. Front Gate" />
-                  <SecondaryButton
-                    className="w-auto px-4 flex-shrink-0"
-                    onClick={async () => {
-                      if (!newStation.trim()) return;
-                      const st = await runOrReportPinError(() => adminCreateStation(pin, selected.id, newStation.trim()));
-                      if (!st) return;
-                      setNewStation('');
-                      selectEvent(selected);
-                    }}
-                  >
+                <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 mb-4">
+                  <TextInput
+                    value={newStation}
+                    onChange={(e) => setNewStation(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && addStation()}
+                    placeholder="e.g. Front Gate"
+                  />
+                  <PrimaryButton className="w-full sm:w-auto sm:px-6" onClick={addStation}>
                     Add
-                  </SecondaryButton>
+                  </PrimaryButton>
                 </div>
                 <div className="grid sm:grid-cols-2 gap-4">
                   {stations.map((s) => {

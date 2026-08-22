@@ -18,7 +18,7 @@ export function PrimaryButton({
 }: ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
-      className={`w-full rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-semibold py-3.5 px-4 text-base transition-colors ${className}`}
+      className={`w-full rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-semibold py-3.5 px-4 text-base shadow-sm shadow-blue-600/20 transition-colors ${className}`}
       {...props}
     />
   );
@@ -98,18 +98,19 @@ export function TopNav({ current }: { current: string }) {
   const links = [
     ['Dashboard', '/dashboard'],
     ['Station', '/station'],
-    ['Check-In', '/checkin'],
     ['Display', '/display'],
     ['Reports', '/reports'],
     ['Admin', '/admin'],
   ];
   return (
-    <nav className="flex flex-wrap gap-x-4 gap-y-1 mb-5 text-sm">
+    <nav className="flex items-center gap-1 mb-6 bg-white border border-slate-200 rounded-xl p-1.5 overflow-x-auto">
       {links.map(([label, href]) => (
         <a
           key={href}
           href={typeof window !== 'undefined' ? href + window.location.search : href}
-          className={`font-medium ${current === href ? 'text-blue-700' : 'text-slate-500 hover:text-blue-700'}`}
+          className={`px-3.5 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors ${
+            current === href ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-slate-100'
+          }`}
         >
           {label}
         </a>
@@ -143,7 +144,7 @@ export function EventPicker({ linkTo, dark = false }: { linkTo: (id: string) => 
         <div className="space-y-2">
           {events.map((ev) => (
             <a key={ev.id} href={linkTo(ev.id)} className={`block text-sm ${link}`}>
-              {ev.title} <span className={textMuted}>— {ev.event_date}</span>
+              {ev.title} <span className={textMuted}>({ev.event_date})</span>
             </a>
           ))}
         </div>
