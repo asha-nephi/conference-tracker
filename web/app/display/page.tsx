@@ -4,6 +4,7 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 import { useParam } from '@/lib/hooks';
 import { getEvent, getEventTotals, subscribeToCheckinEvents } from '@/lib/data';
 import type { EventRow } from '@/lib/types';
+import { EventPicker } from '@/components/ui';
 
 function DisplayInner() {
   const eventParam = useParam('event');
@@ -73,8 +74,10 @@ function DisplayInner() {
 
   if (!eventParam) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-8 text-center">
-        Add <code className="mx-2">?event=EVENT_ID</code> to the URL.
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-8">
+        <div className="w-full max-w-sm">
+          <EventPicker dark linkTo={(id) => `/display?event=${id}`} />
+        </div>
       </div>
     );
   }

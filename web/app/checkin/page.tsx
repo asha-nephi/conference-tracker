@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { useParam } from '@/lib/hooks';
 import { getEventContext, insertCheckin } from '@/lib/data';
 import type { EventRow, StationRow, WardRow } from '@/lib/types';
-import { Card, Label, PageWrap, PrimaryButton, SecondaryButton, TextInput, ToggleButton } from '@/components/ui';
+import { Card, EventPicker, Label, PageWrap, PrimaryButton, SecondaryButton, TextInput, ToggleButton } from '@/components/ui';
 
 type Stage = 'loading' | 'no-event' | 'pick-station' | 'main';
 type MemberMode = null | 'individual' | 'family';
@@ -109,10 +109,7 @@ function CheckinInner() {
     return (
       <PageWrap>
         <Card>
-          <p className="text-slate-600">
-            This link is missing a valid event. Ask an usher for the correct QR code, or visit{' '}
-            <a href="/" className="text-blue-700 underline">the home page</a>.
-          </p>
+          <p className="text-slate-600">This QR code isn't working. Please ask an usher for help.</p>
         </Card>
       </PageWrap>
     );
@@ -202,9 +199,9 @@ function CheckinInner() {
 
                 {memberMode === 'family' && (
                   <div>
-                    <Label>Name (one household member is fine)</Label>
+                    <Label>Your name</Label>
                     <TextInput value={famName} onChange={(e) => setFamName(e.target.value)} placeholder="e.g. Brother Okafor" />
-                    <Label>How many of you are here? (including you)</Label>
+                    <Label>How many in your group?</Label>
                     <div className="flex items-center gap-2">
                       <button
                         className="w-11 h-11 rounded-lg border border-slate-300 text-lg"

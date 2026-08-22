@@ -1,4 +1,8 @@
-import { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react';
+'use client';
+
+import { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, useEffect, useState } from 'react';
+import { listEvents } from '@/lib/data';
+import type { EventRow } from '@/lib/types';
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
@@ -52,7 +56,10 @@ export function ToggleButton({
 export function TextInput({ className = '', ...props }: InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
-      className={`w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${className}`}
+      // min-w-0 matters here: inside a flex row, a plain w-full input still
+      // defaults to min-width:auto and shrinks to near-nothing next to a
+      // sibling button — this is what caused the squished input bug.
+      className={`w-full min-w-0 flex-1 rounded-lg border border-slate-300 px-3.5 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${className}`}
       {...props}
     />
   );
@@ -108,5 +115,39 @@ export function TopNav({ current }: { current: string }) {
         </a>
       ))}
     </nav>
+  );
+}
+
+// Consistent "no event in the URL" state for every page — picks up whatever
+// events exist, or points to Admin if there are none yet. `linkTo` builds
+// the destination URL for a given event, e.g. (id) => `/station?event=${id}`.
+export function EventPicker({ linkTo, dark = false }: { linkTo: (id: string) => string; dark?: boolean }) {
+  const [events, setEvents] = useState<EventRow[] | null>(null);
+
+  useEffect(() => {
+    listEvents().then(setEvents);
+  }, []);
+
+  const textMuted = dark ? 'text-slate-400' : 'text-slate-500';
+  const link = dark ? 'text-blue-400 underline' : 'text-blue-700 underline';
+
+  return (
+    <Card className={dark ? 'bg-slate-900 border-slate-700' : ''}>
+      {events === null ? (
+        <p className={`text-sm ${textMuted}`}>Loading…</p>
+      ) : events.length === 0 ? (
+        <p className={`text-sm ${textMuted}`}>
+          No sessions yet. <a href="/admin" className={link}>Create one in Admin</a>.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {events.map((ev) => (
+            <a key={ev.id} href={linkTo(ev.id)} className={`block text-sm ${link}`}>
+              {ev.title} <span className={textMuted}>— {ev.event_date}</span>
+            </a>
+          ))}
+        </div>
+      )}
+    </Card>
   );
 }

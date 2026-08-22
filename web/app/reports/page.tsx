@@ -27,7 +27,7 @@ import {
   listEvents,
 } from '@/lib/data';
 import type { EventRow, EventTotalsRow, FullCheckinRow, MethodTotalsRow, WardTotalsRow } from '@/lib/types';
-import { Card, Label, PageWrap, PrimaryButton, SecondaryButton, StatTile, TextInput, TopNav } from '@/components/ui';
+import { Card, EventPicker, Label, PageWrap, PrimaryButton, SecondaryButton, StatTile, TextInput, TopNav } from '@/components/ui';
 
 const COLORS = ['#2563eb', '#16a34a', '#d97706', '#dc2626', '#7c3aed', '#0891b2', '#db2777'];
 
@@ -122,16 +122,7 @@ function ReportsInner() {
     return (
       <PageWrap wide>
         <TopNav current="/reports" />
-        <Card>
-          <p className="text-slate-600 mb-3">Pick an event to view its report.</p>
-          <div className="grid gap-2">
-            {events.map((ev) => (
-              <a key={ev.id} href={`/reports?event=${ev.id}`} className="text-blue-700 underline text-sm">
-                {ev.title} — {ev.event_date}
-              </a>
-            ))}
-          </div>
-        </Card>
+        <EventPicker linkTo={(id) => `/reports?event=${id}`} />
       </PageWrap>
     );
   }
@@ -265,9 +256,7 @@ function ReportsInner() {
 
       <Card className="mt-4 print-card">
         <h2 className="font-bold text-sm mb-1">Guest / investigator follow-up sheet</h2>
-        <p className="text-xs text-slate-400 mb-4 no-print">
-          Contains names, phone/address, and who invited them. PIN-protected.
-        </p>
+        <p className="text-xs text-slate-400 mb-4 no-print">PIN-protected</p>
         {!guests ? (
           <div className="no-print max-w-xs mx-auto py-2">
             <TextInput

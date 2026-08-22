@@ -4,7 +4,7 @@ import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useParam } from '@/lib/hooks';
 import { getEventContext, getEventTotals, insertCheckin } from '@/lib/data';
 import type { EventRow, EventTotalsRow, StationRow, WardRow } from '@/lib/types';
-import { Card, Label, PageWrap, PrimaryButton, SecondaryButton, StatTile, TextInput, ToggleButton, TopNav } from '@/components/ui';
+import { Card, EventPicker, Label, PageWrap, PrimaryButton, SecondaryButton, StatTile, TextInput, ToggleButton, TopNav } from '@/components/ui';
 
 type Stage = 'loading' | 'no-event' | 'pick-station' | 'main';
 type EntryType = 'individual' | 'family' | 'guest';
@@ -132,10 +132,8 @@ function StationInner() {
   if (stage === 'no-event') {
     return (
       <PageWrap>
-        <p className="text-slate-600">
-          Add <code>?event=EVENT_ID</code> to the URL, or pick one from{' '}
-          <a href="/" className="text-blue-700 underline">the home page</a>.
-        </p>
+        <h1 className="text-xl font-bold mb-3">Pick a session</h1>
+        <EventPicker linkTo={(id) => `/station?event=${id}`} />
       </PageWrap>
     );
   }
@@ -199,9 +197,9 @@ function StationInner() {
 
         {entryType === 'family' && (
           <>
-            <Label>Name (one household member is fine)</Label>
+            <Label>Name</Label>
             <TextInput value={famName} onChange={(e) => setFamName(e.target.value)} placeholder="e.g. Sister Adeyemi" />
-            <Label>How many are here? (including this person)</Label>
+            <Label>Group size</Label>
             <div className="flex items-center gap-2">
               <button className="w-11 h-11 rounded-lg border border-slate-300 text-lg" onClick={() => setPartySize((n) => Math.max(1, n - 1))}>−</button>
               <input className="w-16 text-center rounded-lg border border-slate-300 py-2.5" value={partySize} readOnly />

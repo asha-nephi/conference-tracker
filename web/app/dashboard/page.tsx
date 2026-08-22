@@ -2,22 +2,17 @@
 
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useParam } from '@/lib/hooks';
-import { getEvent, getEventTotals, getWardTotals, listEvents, subscribeToCheckinEvents } from '@/lib/data';
+import { getEvent, getEventTotals, getWardTotals, subscribeToCheckinEvents } from '@/lib/data';
 import type { EventRow, EventTotalsRow, WardTotalsRow } from '@/lib/types';
-import { Card, PageWrap, StatTile, TopNav } from '@/components/ui';
+import { Card, EventPicker, PageWrap, StatTile, TopNav } from '@/components/ui';
 
 function DashboardInner() {
   const eventParam = useParam('event');
   const [event, setEvent] = useState<EventRow | null>(null);
-  const [allEvents, setAllEvents] = useState<EventRow[]>([]);
   const [totals, setTotals] = useState<EventTotalsRow[]>([]);
   const [wardTotals, setWardTotals] = useState<WardTotalsRow[]>([]);
   const [connected, setConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-
-  useEffect(() => {
-    if (!eventParam) listEvents().then(setAllEvents);
-  }, [eventParam]);
 
   const refresh = useCallback(async (eventId: string) => {
     const [t, w] = await Promise.all([getEventTotals(eventId), getWardTotals(eventId)]);
@@ -55,17 +50,7 @@ function DashboardInner() {
     return (
       <PageWrap wide>
         <TopNav current="/dashboard" />
-        <Card>
-          <p className="text-slate-600 mb-3">Pick an event to view its live dashboard.</p>
-          <div className="grid gap-2">
-            {allEvents.map((ev) => (
-              <a key={ev.id} href={`/dashboard?event=${ev.id}`} className="text-blue-700 underline text-sm">
-                {ev.title} — {ev.event_date}
-              </a>
-            ))}
-            {allEvents.length === 0 && <p className="text-slate-400 text-sm">No events yet.</p>}
-          </div>
-        </Card>
+        <EventPicker linkTo={(id) => `/dashboard?event=${id}`} />
       </PageWrap>
     );
   }

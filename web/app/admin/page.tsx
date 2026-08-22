@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import {
   adminCreateEvent,
   adminCreateStation,
-  adminCreateWard,
   adminDeleteEvent,
   adminDeleteStation,
   adminDeleteWard,
@@ -56,7 +55,7 @@ function AdminGate({ onUnlock }: { onUnlock: (pin: string) => void }) {
     <PageWrap>
       <Card className="mt-10">
         <h1 className="text-lg font-bold mb-1">Admin access</h1>
-        <p className="text-slate-500 text-sm mb-4">Enter the admin PIN to manage events, stations, and wards.</p>
+        <p className="text-slate-500 text-sm mb-4">Enter the admin PIN to continue.</p>
         <TextInput
           type="password"
           inputMode="numeric"
@@ -101,7 +100,6 @@ function AdminPanel({ pin, onLock }: { pin: string; onLock: () => void }) {
   const [newDate, setNewDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [newIsMain, setNewIsMain] = useState(false);
   const [newStation, setNewStation] = useState('');
-  const [newWard, setNewWard] = useState('');
   const [editTitle, setEditTitle] = useState('');
   const [editIsMain, setEditIsMain] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -174,9 +172,8 @@ function AdminPanel({ pin, onLock }: { pin: string; onLock: () => void }) {
             <TextInput type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} />
             <label className="flex items-center gap-2 mt-3.5 text-sm text-slate-700">
               <input type="checkbox" checked={newIsMain} onChange={(e) => setNewIsMain(e.target.checked)} className="w-4 h-4" />
-              Main Conference session — collects guest / investigator details
+              Main Conference (collects guest details)
             </label>
-            <p className="text-xs text-slate-400 mt-1">Leave unchecked for members-only sessions (e.g. Saturday).</p>
             <PrimaryButton
               className="mt-4"
               onClick={async () => {
@@ -219,7 +216,7 @@ function AdminPanel({ pin, onLock }: { pin: string; onLock: () => void }) {
         <div className="md:col-span-2 space-y-4">
           {!selected && (
             <Card>
-              <p className="text-slate-500 text-sm">Select or create an event to configure its stations and wards.</p>
+              <p className="text-slate-500 text-sm">Select or create an event to get started.</p>
             </Card>
           )}
 
@@ -231,7 +228,7 @@ function AdminPanel({ pin, onLock }: { pin: string; onLock: () => void }) {
                 <TextInput value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
                 <label className="flex items-center gap-2 mt-3.5 text-sm text-slate-700">
                   <input type="checkbox" checked={editIsMain} onChange={(e) => setEditIsMain(e.target.checked)} className="w-4 h-4" />
-                  Main Conference session — collects guest / investigator details
+                  Main Conference (collects guest details)
                 </label>
                 <div className="flex flex-col sm:flex-row gap-2 mt-4">
                   <SecondaryButton
@@ -253,7 +250,7 @@ function AdminPanel({ pin, onLock }: { pin: string; onLock: () => void }) {
                     Delete this session
                   </SecondaryButton>
                 </div>
-                <p className="text-xs text-slate-400 mt-3 break-all">Event ID (use in links): <code>{selected.id}</code></p>
+                <p className="text-xs text-slate-400 mt-3 break-all">ID: <code>{selected.id}</code></p>
               </Card>
 
               <Card>
@@ -308,27 +305,16 @@ function AdminPanel({ pin, onLock }: { pin: string; onLock: () => void }) {
               </Card>
 
               <Card>
-                <h2 className="font-bold text-sm mb-3">Wards</h2>
-                <div className="flex flex-col sm:flex-row gap-2 mb-4">
-                  <TextInput value={newWard} onChange={(e) => setNewWard(e.target.value)} placeholder="e.g. Ikeja Ward" />
-                  <SecondaryButton
-                    className="w-auto px-4 flex-shrink-0"
-                    onClick={async () => {
-                      if (!newWard.trim()) return;
-                      const w = await runOrReportPinError(() => adminCreateWard(pin, selected.id, newWard.trim(), wards.length));
-                      if (!w) return;
-                      setNewWard('');
-                      selectEvent(selected);
-                    }}
-                  >
-                    Add
-                  </SecondaryButton>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="font-bold text-sm">Wards</h2>
+                  <span className="text-xs text-slate-400">Auto-filled for Ikeja Stake</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {wards.map((w) => (
                     <span key={w.id} className="inline-flex items-center gap-1.5 text-xs font-semibold bg-slate-100 text-slate-600 rounded-full pl-3 pr-1.5 py-1">
                       {w.name}
                       <button
+                        title="Remove"
                         className="text-slate-400 hover:text-red-600 leading-none"
                         onClick={async () => {
                           const done = await runOrReportPinError(async () => { await adminDeleteWard(pin, w.id); return true; });
@@ -339,7 +325,7 @@ function AdminPanel({ pin, onLock }: { pin: string; onLock: () => void }) {
                       </button>
                     </span>
                   ))}
-                  {wards.length === 0 && <p className="text-slate-400 text-sm">No wards yet.</p>}
+                  {wards.length === 0 && <p className="text-slate-400 text-sm">No wards on this session.</p>}
                 </div>
               </Card>
 
